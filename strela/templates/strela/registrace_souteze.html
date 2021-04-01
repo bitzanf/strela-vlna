@@ -1,0 +1,46 @@
+{% extends "soutez_base.html" %}
+
+{% block title %} Registrace týmu {% endblock %}
+{% block extrajs %} 
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'css/jquery-ui.css' %}" type="text/css">
+    <link href="{% static 'selectable/css/dj.selectable.css' %}" type="text/css" media="all" rel="stylesheet">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.3/jquery-ui.js"></script>
+    <script type="text/javascript" src="{% static 'selectable/js/jquery.dj.selectable.js' %}"></script>
+{% endblock %}    
+{% block content %}
+{% load bootstrap4 %}
+
+<div class="row kustify-content-between">
+    <div class="col-6">
+        <form method="post" action="{% url 'registrace_souteze' %}" autocomplete="off">
+            {% csrf_token %}
+            <div class="card bg-light">
+                <div class="card-header bg-info">
+                    <h4 class="card-title">Registrace do soutěže</h4>
+                </div>
+                <div class="card-body">
+                    {% bootstrap_form form %}
+                </div>  
+                <div class="card-footer">
+                    {% buttons %}
+                    <button type="submit" class="btn btn-primary">
+                        Registrovat tým
+                    </button>
+                    {% endbuttons %}
+                </div>  
+            </div>    
+        </form>
+    </div>
+    <div class="col-6">
+        <div class="alert alert-info">
+            <h4 class="alert-heading">Školy</h4>
+            <div class="mb-0">
+                <p>Pokud nevidíte vaši školu, napište nám na <b>strela-vlna@gchd.cz</b>, a my ji přidáme.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block registrace%} {% endblock %}

@@ -1,0 +1,8 @@
+<H3> Děkujeme za Vaši registraci </H3>
+do soutěží {{ souteze }}.
+
+Bylo vám vygenerováno <br >přihlašovací jméno <b>{{ login }}</b> <br> a heslo <b>{{ heslo }}</b> <br>
+Toto heslo pečlivě uschovejte, budete ho potřebovat pro přihlášení do soutěží.<br>
+<br>
+S pozdravem <br>
+organizační tým GCHD

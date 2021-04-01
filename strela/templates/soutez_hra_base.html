@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" type="text/css"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}{% endblock %} | Střela & Vlna 「hra」</title> 
+    {% load bootstrap4 %}
+    {% bootstrap_css %} 
+    {% bootstrap_javascript jquery='full' %}
+    {% block extrastyle %} {% endblock %}
+    {% block extrajs %} {% endblock %}
+</head>
+
+<body>
+{% url "herni_server" as herni_server__ %}
+{% url "hra_udalostitymu" as hra_udalostitymu__ %}
+{% url "hra_vysledky" as hra_vysledky__ %}
+{% url "tym_chat_list" as tym_chat_list__ %}
+<nav class="navbar navbar-expand-sm bg-primary navbar-dark" style="font-size:20px">
+        <a class="navbar-brand" href="{% url "herni_server" %}">
+            <img src="/static/img/Logo-pruhledne-60px.png"  alt="Strela Vlna">
+        </a>
+         {% if user.is_authenticated %}
+                <form class="form-inline ml-auto" action="{% url 'logout_souteze'%}">            
+                    <span class="navbar-text mr-3">Jste přihlášen jako <b><span  class="ml-2" style="color: #ffffffaa;"> {{user.jmeno| default:"nesoutěžící"}}</b></span></span>
+                    <button class="btn btn-success my-2 btn-sm" type="submit">Odhlásit</button>
+                </form>     
+                {% else %}
+                <form class="form-inline ml-auto"  action="{% url "login_souteze" %}">            
+                    <span class="navbar-text mr-3">Nejste přihlášen  </span>
+                    <button class="btn btn-success my-2 btn-sm" type="submit">Přihlásit</button>
+                </form>  
+            {% endif %}       
+        
+</nav>    
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <aside class="col col-md-2 p-0 bg-dark" style="max-width: 70%">
+                <nav class="navbar navbar-expand navbar-dark bg-dark flex-md-column flex-row align-items-start py-2" style="font-size:20px">
+                    <div class="collapse navbar-collapse">
+                        <ul class="flex-md-column flex-row navbar-nav w-100 justify-content-between">
+                        {% if perms.strela.soutezici and aktivni_soutez %}
+                            <li class="nav-item"><a class="nav-link pl-0 {% if request.path == herni_server__ %} active {% endif %}" href="{% url "herni_server" %}">Můj tým</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 {% if request.path == hra_udalostitymu__ %} active {% endif %}" href="{% url "hra_udalostitymu" %}">Události týmu</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 {% if tym_chat_list__ in request.path %} active {% endif %}" href="{% url "tym_chat_list" %}">Konverzace týmu</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 {% if request.path == hra_vysledky__ %} active {% endif %}" href="{% url "hra_vysledky" %}">Leaderboard</a></li>
+                        {% else %}
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Můj tým</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Události týmu</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Konverzace týmu</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Leaderboard</a></li>
+                        {% endif %}
+                        </ul>
+                    </div>
+                </nav>
+            </aside>
+            <main class="col">
+                <div class="content">
+                {% bootstrap_messages %}
+                {% if perms.strela.soutezici %}    
+                    {% if aktivni_soutez %}
+                        {% block content %} {% endblock %}
+                    {% else %}
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
+                            <p>Nemůžete se přihlásit, jelikož není spuštěna žádná soutěž</p>
+                        </div>
+                    {% endif %}
+                {% else %}
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">Nejste přihlášen jako soutěžící</h4>
+                    <p> Jste v části webu určené pro soutěžení. 
+                    Musíte být přihlášeni přihlašovacími údaji, které jste obdrželi při registraci týmu.</p>
+                </div>
+                 {% block login-content %} {% endblock %}
+                {% endif %}
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

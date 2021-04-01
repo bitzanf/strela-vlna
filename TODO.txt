@@ -1,0 +1,66 @@
+++  - otazka zarazena do letosnich soutezi nesmi jit odschvalit
+++  - Kontrola duplicity při nové otazce z webu (create i update) a importu ze souboru, orezat mezery.
+++  - Při zakládání soutěže výpis dostupných otázek.pocty a kategorie
+--  - Při operacich Update porovnávat zda neměníme již změněné.napr. schválení a odschvaleni.
+++  - import - upravit na otvirani souboru pouze jednou,
+--  - pri nakupovani otazek pridat select for update,
+??  - pridat volbu typu importovane otazky XMF pri importu ze souboru
+++  - resit logovani operaci (zalozeni, zmeny otazky ..) nebo history model ?
+++  - kontrola permission a pridani adminsouteze kde je treba
+++  - kontrola successmessage - vaze se na form_valid - upravit kde je treba
+++  - po založení soutěže jen přidat otázky a spustit soutez. Změny parametrů soutěže přes dbadmina.
+++  - Sázení na chybnou otázku
+++  - Výběr otázek na fyzika&matika z fyzika&matika or fyzika or matika
+++  - Zobrazovat počet relevantních otázek k soutěži před výběrem otázek
+++  - dodelat exclude dostupnych otazek !!!
+++  - dodělat generování PDF zadání i správných řešení, dodelat escape textu na ridici znaky latexu viz utils
+??  - jsou v zadání obrázky ?  implementovat ve verzi 2
+++  - technicka podpora
+++  - soutez lze pustit az po skonceni registrace, nelze spustit lonskou soutez, letos pouze jednu
+++  - dodelat registraci týmu, emaily, hesla,  udelat view na potvrzeni registrace, doplnit do logu o emailu identifikaci tymu
+++  - opravit tisk prazdnych vysledku a zakazat tlacitka kdyz nejsou otazky - asi
+++  - opravit chybu při nákupu otázek (obtiznost, get, aktivni soutez misto pk)
+++  - logovat do tabulky týmu otázky odeslané ke kontrole
+++  - opravit escape html vsude u otazek
+++  - do detailu souteze pridat seznam tymů - acordeon a detail tymu po rozbaleni
+++  - pridat hromadny email všem týmům (modalni okno s potvrzenim ?) - udelano pres normalni view
+++  - prechod na uwsgi a mysql a udelat cistou databazi, import otazek a skol, skoly do fixtures
+++  - opravit nakup otazky - nerovnosti jsou ostre, takze kdyz ma treba 20 DC a otazka stoji 20 DC tak ji nekoupi i kdyz by mel
+++  - u otevirani konverzace vlozit do session pod klicem 'id_konverzace' id (detail otazky, poslani kontorlou reseni)
+++  - checkbox chybneho zadani na technicke podpore
+++  - moznost tymu kontaktovat technickou podporu naprimo
+++  - seznam konverzaci tymu
+++  - prenacist stranku po zmene stavu otazky (provede se po odeslani formulare)
+++  - pri chybe u konverzace zalogovat do souboru
+    - do ostreho provozu nedovolit spusteni jiz probehle souteze
+++  - kontrola vsazene castky z duvodu rucniho zadani do inputboxu
+++  - vypisovat sazku i v detailu otazky tymu
+++  - kontrola vsazene castky aby se neodecetlo do zaporne hodnoty ( po rucnim zadani)
+++  - funkcni latexify u zakoupenych otazek v datatable
+++  - problem u zakoupenych otazek v datatable. Pokud se prejde na jinou stranku v datatable, nelze otazku rozkliknout dokud se stranka neprenacte pomoci ajaxu
+++  - doplnit informace do zapati webu
+??  - přidat aktuality na hlavní stránku soutěže. Implementova jen pokud to nekdo bude chtít.
+++  - na strankach dodelat title
+--  - u konverzaci vyhledavat i podle souteze
+        vaze se na tym_soutez_otazka => pro kazdou soutez identicke
+++  - vypnuti autocomplete ve formech
+++  - "pokud nevidite skolu napiste mail"
+++  - jeden mail kdyz ma ucitel vic tymu (u posilani hromadneho mailu) (=> odstraniit duplicity)
+++  - maximum vsazeni podle obtiznosti otazky - maximalne vsadi kupni cenu otazky
+++  - prohodit hranate zavorky u cisla otazky (adminske pohledy)
+++  - messages o informaci posledni udalosti tymu (odeslani/vyreseni atd.)
+++  - nejlehci jdou do bazaru donekonecna
+++  - lookup pro hledani skol
+    - formular na zadavani poctu bodu v off-line soutezi (jeden form pro vsechny tymy)
+??  - cislo pri registraci tymu sekvence v soutezi nikoliv v roce 
+    - opravit kdyz se tym prihlasi do jine souteze (login spadne)
+??  - vyhodit uznat/zamitnout kdyz tym kontaktuje podporu
+    - statistiky (z LogTable)
+---------------------------------------------------------    
+Rozšíření na dynamický počet a typy soutěží
+    - Název soutěže do db
+    - typy soutěže do DB číselníku
+    - typy otázek do DB číselníku
+    - vazební tabulka soutěž na typy otázek
+    - výběr otázek do soutěže podle vazební tabulky
+--------------------------------------------------------- 

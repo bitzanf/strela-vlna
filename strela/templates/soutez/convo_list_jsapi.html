@@ -1,0 +1,34 @@
+<table class="table table-hover" id="chat_list_table" style="width: 100%">
+    <thead>
+        <tr>
+            {% if canSeeId == True %}
+            <th scope="col">Tým</th>
+            {% endif %}
+            <th scope="col">Otázka</th>
+            <th scope="col">Stav</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for o in object_list %}
+            {% with o.pk|stringformat:'i' as id %}
+            <tr class="clickable-row" data-href="{{ id }}" style="cursor: pointer;">
+                {% if canSeeId == True %}
+                <td>{{ o.tym }}</td>
+                <td>{{ o.otazka.otazka.typ }}-{{ o.otazka.cisloVSoutezi }} [{{ o.otazka.otazka.id }}]</td>
+                {% else %}
+                <td>{{ o.otazka.otazka.typ }}-{{ o.otazka.cisloVSoutezi }}</td>
+                {% endif %}
+                <td>{% if o.uzavreno == True %}
+                    <span class="badge badge-success">Uzavřeno</span>
+                {% else %}
+                    <span class="badge badge-warning">Neuzavřeno</span>
+                {% endif %}</td>
+            </tr>
+            {% endwith %}
+        {% empty %}
+            <tr>
+                <td colspan="3" style="text-align: center">Žádné konverzace k zobrazení</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>

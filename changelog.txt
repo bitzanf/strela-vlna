@@ -1,0 +1,27 @@
+18.01.2021 instalace django-sequences, django-ajax-datatable
+23.01.2021 instalace djangorestframework-datatables
+30.01.2021 instalace django-latexify 
+09.02.2021 apt install texlive-latex-base,  pip3 install django-tex
+           nepouzivane:  django-ajax-datatable djangorestframework-datatables
+13.02.2021 pip3 install django-bootstrap-datepicker-plus + konfigurace
+16.02.2021 doplnen management command pro kontrolu duplicity s odstranenim mezer uvnitr zadani
+           kontrola duplicity pro nove zadani, kontrola pro ulozeni, ulozeni s nahledem ,schvalovani
+19.02.2021 instalace  texlive-lang-czechslovak, texlive-latex-extra, texlive-latex-recommended
+22.02.2021 instalace  apt install texlive-science, engine nastaven na lualatex (umi utf8)
+04.03.2021 konfigurace ukladani django session do memcached
+14.03.2021 apt install libapache2-mod-wsgi-py3, uprava settings (base_dir)
+20.03.2021 CREATE DATABASE strela_vlna CHARACTER SET utf8;
+           CREATE USER 'django'@'localhost' IDENTIFIED BY '*******';
+           GRANT ALL PRIVILEGES ON strela_vlna . * TO 'django'@'localhost';
+           apt install default-libmysqlclient-dev  -- aby sel pip3 install
+           apt install python3-mysqldb   -- asi nebude potreba - stara verze, preinstaluje se pomocí pip3
+           pip3 install -U mysqlclient   -- updrade po instalaci systemoveho python3-mysqldb
+           -- nutne operace po prekopirovani do ostreho provozu:
+           chown -R www-data:www-data soutez
+           manage.py collectstatic
+           pri prvnim spusteni:
+             smazat log
+             provest uplnou migraci:  ./manage.py makemigrations strela
+             vytvorit superadministratora: manage.py createsuperuser
+           podle potreby provadet restart uwsgi :  touch uwsgi-touch-reload.txt
+22.03.2021  instalace django-selectable (pip3), udelany fixtures skol  ./manage.py dumpdata strela.skola > skola.fix

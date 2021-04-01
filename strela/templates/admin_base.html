@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" type="text/css"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    {% block refresh %}{% endblock %}
+    <title>{% block title %}Administrace soutěže{% endblock %} | Střela & Vlna 「admin」</title>
+    {% load bootstrap4 %}
+    {% bootstrap_css %} 
+    {% bootstrap_javascript jquery='full' %}
+
+    {% block extrastyle %} {% endblock %}
+    {% block extrajs %} {% endblock %}
+</head>
+
+<body>
+{% url "admin_index" as admin_index__ %}
+{% url "otazky" as otazky_ %}
+{% url "kontrola_odpovedi" as kontrola_odpovedi__ %}
+{% url "admin_soutez" as admin_soutez__ %}
+{% url "podpora_list" as podpora_list__ %}
+{% url "admin_soutez_detail" 0 as detail_souteze__ %}
+{% url "nova_soutez" as nova_soutez__ %}
+{% url "admin-otazka-detail" 0 as detail_otazky__ %}
+{% url "admin-otazka-delete" 0 as smazat_otazku__ %}
+{% url "nova_otazka" as nova_otazka__ %}
+
+<nav class="navbar navbar-expand-sm bg-success navbar-dark" style="font-size:20px">
+        <a class="navbar-brand" href="{% url "admin_index" %}">
+            <img src="/static/img/Logo-pruhledne-60px.png"  alt="Strela Vlna">
+        </a>
+         {% if user.is_authenticated %}
+                <form class="form-inline ml-auto" action="{% url 'admin_logout'%}">
+                    <span class="navbar-text mr-3">Jste přihlášen jako <b><span  class="ml-2" style="color: #ffffffaa;"> {{ user.first_name | default:"neznámý" }}</b></span></span>
+                    <button class="btn btn-primary my-2 btn-sm" type="submit">Odhlásit</button>
+                </form>     
+                {% else %}
+                <form class="form-inline ml-auto"  action="{% url "admin_login" %}">
+                    <span class="navbar-text mr-3">Nejste přihlášen  </span>
+                    <button class="btn btn-primary my-2 btn-sm" type="submit">Přihlásit</button>
+                </form>  
+            {% endif %}       
+        
+</nav>    
+    <div class="container-fluid h-100">
+        <div class="row h-100">
+            <aside class="col col-md-2 p-0 bg-dark" style="max-width: 70%">
+                <nav class="navbar navbar-expand navbar-dark bg-dark flex-md-column flex-row align-items-start py-2" style="font-size:20px">
+                    <div class="collapse navbar-collapse">
+                        <ul class="flex-md-column flex-row navbar-nav w-100 justify-content-between">
+                        {% if perms.strela.adminsouteze %}
+                            {% if 'strela.novasoutez' in perms %}
+                                <li class="nav-item"><a class="nav-link pl-0 {% if request.path == admin_index__ %} active {% endif %}" href="{% url "admin_index" %}">Stav soutěže</a></li>
+                            {% else %}
+                                <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Stav soutěže</a></li>
+                            {% endif %}
+                            {% if 'strela.zadavatel' in perms or 'strela.kontrolazadani' in perms %}
+                                <li class="nav-item"><a class="nav-link pl-0 {% if otazky_ in request.path or detail_otazky__|slice:":-2" in request.path or smazat_otazku__|slice:":-2" in request.path or nova_otazka__ in request.path %} active {% endif %}" href="{% url "otazky" %}">Otázky</a></li>
+                            {% else %}    
+                                <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Otázky</a></li>
+                            {% endif %}
+                            {% if 'strela.kontrolareseni' in perms %}
+                                <li class="nav-item"><a class="nav-link pl-0 {% if kontrola_odpovedi__ in request.path %} active {% endif %}" href="{% url "kontrola_odpovedi" %}">Kontrola odpovědí</a></li>
+                            {% else %}
+                                <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Kontrola odpovědí</a></li>
+                            {% endif %}
+                            {% if 'strela.novasoutez' in perms %}
+                                <li class="nav-item"><a class="nav-link pl-0 {% if admin_soutez__ in request.path or detail_souteze__|slice:":-2" in request.path or nova_soutez__ in request.path %} active {% endif %}" href="{% url "admin_soutez" %}">Soutěže</a></li>
+                            {% else %}
+                                <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Soutěže</a></li>
+                            {% endif %}
+                            {% if 'strela.podpora' in perms %}
+                                <li class="nav-item"><a class="nav-link pl-0 {% if podpora_list__ in request.path %} active {% endif %}" href="{% url "podpora_list" %}">Technická podpora</a></li>
+                            {% else %}
+                                <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Technická podpora</a></li>
+                            {% endif %}
+                        {% else %}
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Stav soutěže</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Otázky</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Kontrola odpovědí</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Soutěže</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Technická podpora</a></li>
+                        {% endif %}
+                        </ul>
+                    </div>
+                </nav>
+            </aside>
+            <main class="col">
+                <div class="content">
+                <div>{% bootstrap_messages %}</div>
+                {% if perms.strela.adminsouteze %}
+                    {% block content %} {% endblock %}
+                {% else %}
+                <div class="alert alert-danger" role="alert">
+                    <h4 class="alert-heading">Nejste přihlášen jako administrátor</h4>
+                    <p>Jste v části webu určené pro administrátory. Bez adminských oprávnění nemůžete soutěž spravovat.</p>
+                </div>
+                 {% block login-content %} {% endblock %}
+                {% endif %}
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

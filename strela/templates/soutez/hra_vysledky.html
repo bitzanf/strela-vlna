@@ -1,0 +1,36 @@
+{% extends "soutez_hra_base.html" %}
+{% block title %}Výsledková listina{% endblock %}
+
+{% block extrajs %}
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.css"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css"/>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+    
+    <script type="text/javascript">
+        function autorefresh() {
+            setInterval("refreshpage()", 20000);
+        }
+
+        function refreshpage() {
+            $.ajax({
+                url: "{% url 'hra_vysledky_jsapi' %}",
+                success: function(data) {
+                    $("#innerdata").html(data);
+             }
+            });
+        }
+        </script>
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+    <div class="container" style="margin-left: -20px" id="innerdata"></div>
+
+    <script language="javascript">
+        $(document).ready(function() {
+            refreshpage();
+            autorefresh();
+        });
+    </script>
+{% endblock %}

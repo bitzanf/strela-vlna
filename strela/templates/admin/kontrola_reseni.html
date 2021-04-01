@@ -1,0 +1,44 @@
+{% extends "admin_base.html" %}
+{% block title %}Kontrola odpovědí{% endblock %}
+
+{% block extrajs %}
+<script type="text/javascript">
+    function autorefresh() {
+        setInterval("refreshpage()", 20000);
+    }
+
+    function refreshpage() {
+        $.ajax({
+            url: "{% url 'jsapi_kontrola' %}",
+            success: function(data) {
+                $("#innerdata").html(data);
+                $(".clickable-row").click(function() {
+                     window.location = $(this).data("href");
+                });
+         }
+        });
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+
+{% if is_aktivni_soutez %}
+<div class="container" style="margin-left: -20px" id="innerdata"></div>
+<script language="javascript">
+    $(document).ready(function() {
+        refreshpage();
+        autorefresh();
+    });
+</script>
+
+{% else %}
+<div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
+    <p>Nelze zobrazit otázky ke kontrole, jelikož neběží žádná soutěž</p>
+</div>
+{% endif %}
+
+    
+{% endblock %}

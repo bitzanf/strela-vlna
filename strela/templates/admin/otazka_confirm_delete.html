@@ -1,0 +1,29 @@
+{% extends "admin_base.html" %}
+{% block extrajs %}
+    {% include 'latexify/stylesheets.html' %} 
+{% endblock %}
+
+{% block title %} Potvrzení odstranění úlohy {{ object.id }} {% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{% load latexify %}
+<form method="post">{% csrf_token %}
+    <div class="row mb-3">  
+        <div class="card bg-light" style="width:600px">
+            <div class="card-header bg-info font-weight-bold">
+                Detail otázky - náhled zadání {{ object.typ }}-{{ object.pk }}
+            </div>
+            <div class="card-body">
+                {% latexify object.zadani|escape parse_math=True %}
+            </div>  
+            <div class="card-footer text-center">
+                {% buttons %}
+                <button type="submit" class="btn btn-danger"> Opravdu smazat?</button>
+                {% endbuttons %}
+            </div>      
+        </div>
+    </div>
+</form>
+{% include "latexify/scripts.html" %}
+{% endblock %}

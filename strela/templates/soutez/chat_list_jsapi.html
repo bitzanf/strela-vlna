@@ -1,0 +1,13 @@
+{% if chat_errormsg != None %}
+    <div class="alert alert-danger" role="alert">
+        {{ chat_errormsg }}
+    </div>
+{% else %}
+
+{% for msg in msgs %}
+<div class="{% if msg.dir_rel %} chat_odchozi {% else %} chat_prichozi {% endif %}">{{ msg.text }}</div>
+{% empty %}
+<div class="chat_odchozi" style="background-color: #aaaaaa; text-align: center">Zatím žádné zprávy</div>
+{% endfor %}
+
+{% endif %}

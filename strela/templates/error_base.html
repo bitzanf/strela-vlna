@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="cs">
+    <head>
+        {% load static %}
+        <meta charset="UTF-8">
+        {#<link rel="stylesheet" href="{% static 'css/style.css' %}" type="text/css">#}
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>{% block title %} {% endblock %}</title>
+        {% load bootstrap4 %}
+        {% bootstrap_css %}
+    </head>
+
+    <body>
+        <nav class="navbar navbar-expand-sm bg-danger navbar-dark" style="font-size:20px">
+            <a class="navbar-brand" href="{% url "index_souteze" %}">
+                <img src="/static/img/Logo-pruhledne-60px.png"  alt="Strela Vlna">
+            </a>
+            {% block logout-error %}
+            {% if user.is_authenticated %}
+                <form class="form-inline ml-auto" action="{% url 'logout_souteze'%}">            
+                    <span class="navbar-text mr-3">Jste přihlášen jako <b><span  class="ml-2" style="color: #ffffffaa;"> {{user.jmeno| default:"nesoutěžící"}}</b></span></span>
+                    <button class="btn btn-success my-2 btn-sm" type="submit">Odhlásit</button>
+                </form>  
+            {% endif %}       
+            {% endblock %}
+        </nav>
+        {% block error %} {% endblock %}
+    </body>
+</html>

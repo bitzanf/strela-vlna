@@ -1,0 +1,34 @@
+<h3>{{ soutez.nazev }} ({{ soutez.rok }}): {{ soutez.zamereni }}</h3>
+
+<table class="table">
+    <thead>
+      <tr>
+         <th scope="col">Pořadí</th>
+         <th scope="col">Číslo týmu</th>
+         <th scope="col">Tým</th>
+         <th scope="col">Škola</th>
+        <th scope="col">Počet bodů</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in TvS %}
+            {% if forloop.counter == 1 %}
+                <tr class="winner">
+            {% elif forloop.counter == 2 %}
+                <tr class="second">
+            {% elif forloop.counter == 3 %}
+                <tr class="third">
+            {% else %}
+                <tr class="pleb">
+            {% endif %}
+                <td><b>{{ forloop.counter }}</b></td>  
+                <td>{{ t.tym.cislo }}</td> 
+                <td>{{ t.tym.jmeno }}</td>
+                <td>{{ t.tym.skola.nazev }}</td>
+                <td>{{ t.penize }}</td>
+        </tr> 
+       {% empty %}
+       <tr><td colspan=5 >Žádné týmy k zobrazení</td></tr>
+       {% endfor %}
+    </tbody>
+</table>

@@ -1,0 +1,160 @@
+{% extends "soutez_hra_base.html" %}
+{% block title %} Detail otázky {% endblock %}
+
+{% block extrajs %}
+    {% include 'latexify/stylesheets.html' %}
+    <script language="javascript">
+        var lastdata = "";
+
+        function refreshpage() {
+            $.ajax({
+                url: "{% url 'view_chat' %}",
+                success: function(data) {
+                    if (lastdata.localeCompare(data) != 0) {
+                        $("#chatlog").html(data);
+                        lastdata = data;
+
+                        var chatDiv = $("#chatlog");
+                        chatDiv.scrollTop = chatDiv.scrollHeight;
+                    }
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            refreshpage();
+            {% if object.stav == 4 %}
+            setInterval("refreshpage()", 10000);
+            {% endif %}
+        });
+
+        function sendform() {
+            //$('#sazka_penize').value = $('#sazka_penize_in').value;   //.val() by mohlo fungovat...
+            document.getElementById('sazka_penize').value = document.getElementById('sazka_penize_in').value;
+            var form = $('#otazkaform');
+            form.append('<input type="hidden" name="b-podpora" value="">');
+            form.submit();
+            $('#modalVsadit').modal('hide');
+        }
+
+        function sendOnEnter(e) {
+            if (e.keyCode == 13 && !e.shiftKey) {
+                if ($('#chattext').val().trim().length > 1) {
+                    $('#chatform').submit();
+                }
+            }
+        }
+    </script>
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{% load latexify %}
+
+<div class="modal fade" id="modalVsadit" tabindex="-1" role="dialog" aria-labelledby="modalVsaditLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalVsaditLabel">Sázka na chybnou otázku</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Zadejte množství peněz, které vsadíte na chybnost otázky<br>
+                Pokud je otázka chybná, dostanete zpět dvojnásobek, pokud ne, přijdete o ně</p>
+                <div class="input-group mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">Sázka:</span>
+                    </div>
+                    <input class="form-control" type="number" min="0" max="{{ max_penize }}" id="sazka_penize_in" value="0">
+                    <div class="input-group-append">
+                        <span class="input-group-text">DC<span class="equalsignshift">=</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="sendform();">Odeslat technické podpoře</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Zrušit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if nepatri %}
+    <div class="alert alert-warning" role="alert">
+        <h5 class="alert-heading">Tato otázka Vám nepatří</h5>
+        <p>Pokoušíte se získat detail otázky, kterou nemáte zakoupenu</p>
+    </div>
+{% else %}   
+    <div class="card bg-light my-4">
+        <div class="card-header bg-info font-weight-bold">
+            Zadání {{otazka.typ}}-{{object.cisloVSoutezi}}
+            {% if was_otazka_podpora %}
+                <span class="badge badge-secondary">Sázka týmu: {{ sazka_tymu|default:'0' }} DC<span class="equalsignshift" style="left: -12px; top: -1px">=</span></span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+        {% latexify otazka.zadani|escape parse_math=True %}
+        </div>
+    </div>    
+<div class="my-4">
+    Stav úlohy : 
+    {% if   object.stav == 1 %} <span class="badge badge-primary"> {{ object.get_stav_display }} </span>
+    {% elif object.stav == 2 or object.stav == 4 %} <span class="badge badge-warning"> {{ object.get_stav_display }} </span>
+    {% elif object.stav == 3 %} <span class="badge badge-success"> {{ object.get_stav_display }} </span>
+    {% elif object.stav == 7 %} <span class="badge badge-danger" > {{ object.get_stav_display }} </span>
+    {% elif object.stav == 6 %} <span class="badge badge-secondary" > {{ object.get_stav_display }} </span>
+    {% endif %}    
+</div>
+{% if object.stav == 1 or object.stav == 6 or object.stav == 7 %}
+<form method="post" action="{% url 'otazka-detail' object.pk %}" autocomplete="off" id="otazkaform">
+    {% csrf_token %}
+    <div class="card bg-light">
+      <div class="card-header bg-info font-weight-bold">
+        {{ otazka.typ }}-{{ object.cisloVSoutezi }} odpověď
+      </div>
+      <div class="card-body">
+        {% bootstrap_form form %} 
+      </div>  
+      <div class="card-footer">
+        {% buttons %}
+            <button type="submit" class="btn btn-primary" name="b-kontrola">Odeslat ke kontrole</button>
+            <button type="button" data-toggle="modal" data-target="#modalVsadit" class="btn btn-danger">Odeslat technické podpoře</button>
+            {% if object.bazar %}   
+            <button type="submit" class="btn btn-secondary" disabled>Prodat do bazaru</button>
+            {% else %}
+            <button type="submit" class="btn btn-warning" name="b-bazar">Prodat do bazaru</button>
+            {% endif %}
+        {% endbuttons %}
+      </div>  
+    </div>    
+    </form>
+{% else %}
+    <div class="card bg-light">
+        <div class="card-header bg-info font-weight-bold">
+            {{otazka.typ}}-{{object.cisloVSoutezi}}  odpověď
+        </div>
+        <div class="card-body">{{object.odpoved|escape}}</div>  
+    </div>       
+{% endif %}
+{% if was_otazka_podpora %}
+<div class="card bg-light mt-4 w-50 float-right">
+  <div class="card-header bg-info font-weight-bold">
+    Chat s podporou
+  </div>
+  <div class="card-body" id="chatlog" style="overflow-y: auto; height: 350px;"></div>
+  {% if object.stav == 4 %}
+  <div class="card-footer">
+    <form method="post" action="{% url 'send_chat' %}" autocomplete="off" id="chatform">
+        {% csrf_token %}
+        <textarea rows="2" style="min-width: 100%" name="text" placeholder="Zpráva" onkeydown="sendOnEnter(event)" id="chattext" required></textarea>
+        <button type="submit" class="btn btn-secondary">Odeslat</button>
+    </form>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endif %}
+{% include "latexify/scripts.html" %}
+{% endblock %}                

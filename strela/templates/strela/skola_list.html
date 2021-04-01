@@ -1,0 +1,18 @@
+{% extends "soutez_base.html" %}
+
+{% block content %}
+{% load bootstrap4 %}
+ <ul class="sidebar-nav">
+   {% if user.is_authenticated %}
+   <li>User: {{ user.get_username }}</li>
+   <li><a href="{% url 'registrace_souteze' %}">My Borrowed</a></li>
+   <li><a href="{% url 'logout_souteze'%}">Logout</a></li>
+   {% else %}
+   <li><a href="{% url 'login_souteze'%}?next={{request.path}}">Login</a></li>
+   {% endif %}
+ </ul>
+    {% for skola in skola_list %}
+        {{skola.nazev}} <br>
+    
+    {% endfor %}    
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "admin_base.html" %}
+{% block title %}Kontrola odpovědi týmu{% endblock %}
+
+{% block extrajs %}{% include 'latexify/stylesheets.html' %}{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{% load latexify %}
+
+<div class="card bg-light" style="width:600px">
+    <div class="card-header bg-info font-weight-bold">
+        Otázka {{ object.cisloVSoutezi }} ({{ object.otazka.get_typ_display }}) - {{ object.otazka.get_obtiznost_display.lower }} {{ object.otazka.pk }}
+    </div>
+    <ul class="list-group list-group-flush">
+        <li class="list-group-item" style="background-color: #00000006">{% latexify object.otazka.zadani|escape parse_math=True %}</li>
+        <li class="list-group-item"><span style="color: #ff00ff">Správné řešení: </span>{{ object.otazka.reseni|escape }}</li>
+        <li class="list-group-item"><span style="color: #ff00ff">Odpověď týmu: </span>{{ object.odpoved|escape }}</li>
+    </ul> 
+    <div class="card-footer">
+    <form method="post" action="{% url 'kontola_odpovedi_detail' object.pk %}">
+        {% csrf_token %}
+        {% buttons %}
+            <button type="submit" class="btn btn-success" name="b-spravne">Správná odpověď</button>
+            <button type="submit" class="btn btn-danger" name="b-spatne">Špatná odpověď</button>
+        {% endbuttons %}
+    </form>
+    </div>  
+</div>    
+{% include "latexify/scripts.html" %}
+{% endblock %}

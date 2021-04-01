@@ -1,0 +1,12 @@
+/.vscode
+/db.sqlite3
+/filip.ppk
+/priklady
+/requirements.txt
+/soutez.log
+/soutez/__pycache__
+/strela/__pycache__
+/static
+/strela/management/commands/__pycache__
+/strela/migrations
+/hesla.txt

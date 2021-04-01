@@ -1,0 +1,77 @@
+{% extends "soutez_hra_base.html" %}
+
+{% block title %} Události týmu {% endblock %}
+
+{% block extrajs %}
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.css"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css"/>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/dataTables.bootstrap4.min.js"></script>
+{% endblock %}
+
+
+{% block content %}
+{% load bootstrap4 %}
+    <div class="row">
+        <h2>{{ request.user }}</h2>
+    </div>
+<table class="table table-hover" id="datatable_tym_udalosti">
+  <thead>
+    <tr>
+      <th scope="col">Čas</th>
+      <th scope="col">Otázka</th>
+      <th scope="col">Starý stav</th>
+      <th scope="col">Nový stav</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in log_tymu %}
+    <tr>
+        <td>{{ s.cas }}</td>   
+        <td>{{ s.typOtazky }} - {{s.cisloVSoutezi}} </td>
+        <td>{{ s.get_staryStav_display }} </td>   
+        <td>{{ s.get_novyStav_display }} </td>   
+    </tr>
+       {% empty %}
+       <tr><td colspan=4 class="text-center">Žádné události k zobrazení</td></tr>
+       {% endfor %}
+    </tbody>
+</table> 
+<script language="javascript">
+    $(document).ready(function() {
+        $('#datatable_tym_udalosti').DataTable({
+            "pageLength": 25,
+            "ordering": false
+            });
+    } );
+</script>
+
+
+
+{#<ul class="pagination pagination-sm">#}
+{#    {% if page_obj.number > 1 %}#}
+{#        <li class="page-item"><a class="page-link" href="?page=1"><<</a></li>#}
+{#    {% else %}#}
+{#        <li class="page-item disabled"><a class="page-link" href="#"><<</a></li>#}
+{#    {% endif %}#}
+{##}
+{#    {% if page_obj.has_previous %}#}
+{#        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><</a></li>#}
+{#        <li class="page-item disabled"><a class="page-link" href="#">{{ page_obj.number }}</a></li>#}
+{#    {% else %}#}
+{#        <li class="page-item disabled"><a class="page-link" href="#"><</a></li>#}
+{#        <li class="page-item disabled"><a class="page-link" href="#">{{ page_obj.number }}</a></li>#}
+{#    {% endif %}    #}
+{##}
+{#    {% if page_obj.has_next %}#}
+{#        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">></a></li>#}
+{#        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">>></a></li>#}
+{#    {% else %}#}
+{#        <li class="page-item disabled"><a class="page-link" href="#">></a></li>#}
+{#        <li class="page-item disabled"><a class="page-link" href="#">>></a></li>#}
+{#    {% endif %}#}
+{#</ul>#}
+
+{% endblock %}

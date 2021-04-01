@@ -1,0 +1,117 @@
+{% extends 'soutez_hra_base.html' %}
+{% block title %}Konverzace týmu{% endblock %}
+
+{% block extrajs %}
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.css"/>
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+{% include 'latexify/stylesheets.html' %}
+<script language="javascript">
+        var lastdata = "";
+        
+        function refreshpage() {
+            $.ajax({
+                url: "{% url 'view_chat' %}",
+                success: function(data) {
+                    if (lastdata.localeCompare(data) != 0) {
+                        $("#chatlog").html(data);
+                        lastdata = data;
+
+                        var chatDiv = $("#chatlog");
+                        chatDiv.scrollTop = chatDiv.scrollHeight;
+                    }
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            refreshpage();
+            {% if vyreseno == False %}
+            setInterval("refreshpage()", 10000);
+            {% endif %}
+        });
+
+        function sendOnEnter(e) {
+            if (e.keyCode == 13 && !e.shiftKey) {
+                if ($('#chattext').val().trim().length > 1) {
+                    $('#chatform').submit();
+                }
+            }
+        }
+</script>
+{% endblock %}
+
+{% block content %}
+{% if otazka != None %}
+{% load latexify %}
+<div class="row">
+    <div class="col">
+        <div class="card bg-light my-4">
+            <div class="card-header bg-info font-weight-bold">
+                Zadání {{ otazka.otazka.typ }}-{{ otazka.cisloVSoutezi }}
+                <span class="badge badge-secondary">Sázka týmu: {{ sazka_tymu|default:'0' }} DC<span class="equalsignshift" style="left: -12px; top: -1px">=</span></span>
+            </div>
+            <div class="card-body">
+            {% latexify otazka.otazka.zadani|escape parse_math=True %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-6">
+        <div class="card bg-light mt-4">
+            <div class="card-header bg-info font-weight-bold text-center">
+                Chat s podporou
+            </div>
+            <div class="card-body" id="chatlog" style="overflow-y: auto; height: 400px;"></div>
+            {% if vyreseno == False %}
+            <div class="card-footer">
+                <form method="post" action="{% url 'send_chat' %}" autocomplete="off" id="chatform">
+                    {% csrf_token %}
+                    <textarea rows="2" style="min-width: 100%" name="text" placeholder="Zpráva" onkeydown="sendOnEnter(event)" id="chattext" required></textarea>
+                    <button type="submit" class="btn btn-secondary">Odeslat</button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-6 mt-4">
+        <div class="card bg-light">
+            <div class="card-header bg-info font-weight-bold">
+                Odpověď týmu
+                {% if vyreseno == True %}
+                    {% if uznano == True %}
+                        <span class="badge badge-success">UZNÁNO</span>
+                    {% else %}
+                        <span class="badge badge-danger">ZAMÍTNUTO</span>
+                    {% endif %}
+                {% endif %}
+            </div>
+            <div class="card-body">{{ otazka.odpoved|escape|default:'<span style="color: red;">Odpověď nezadána</span>' }}</div>  
+        </div>
+    </div>
+</div>
+{% include "latexify/scripts.html" %}
+{% else %}
+<div class="row">
+    <div class="col-6">
+        <div class="card bg-light mt-4">
+            <div class="card-header bg-info font-weight-bold text-center">
+                Chat s podporou
+            </div>
+            <div class="card-body" id="chatlog" style="overflow-y: auto; height: 400px;"></div>
+            {% if vyreseno == False %}
+            <div class="card-footer">
+                <form method="post" action="{% url 'send_chat' %}" autocomplete="off" id="chatform">
+                    {% csrf_token %}
+                    <textarea rows="2" style="min-width: 100%" name="text" placeholder="Zpráva" onkeydown="sendOnEnter(event)" id="chattext" required></textarea>
+                    <button type="submit" class="btn btn-secondary">Odeslat</button>
+                </form>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

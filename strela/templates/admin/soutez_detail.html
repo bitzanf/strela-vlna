@@ -1,0 +1,149 @@
+{% extends "admin_base.html" %}
+{% block title %} Detail Soutěže {% endblock %}
+{% block extrajs %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+
+<div class="row mb-3">  
+    <h2> Soutěž : <span class="font-weight-bold">{{ soutez }}</span> - {{soutez.nazev}} </h2>
+</div>
+<div class="row">
+    <div class="col-sm-6">
+        <table class="table table-hover mt-1 table-sm table-responsive">    
+            <tr><td class="font-weight-bold">Registrace od:</td><td>{{soutez.regod}}</td>
+                <td>
+                    {% if soutez.registrace %}
+                        <span class="badge badge-pill badge-success">Probíhá</span>  
+                    {% else %}      
+                        <span class="badge badge-pill badge-primary">Neprobíhá</span>
+                    {% endif %}               
+                </td></tr>
+            <tr><td class="font-weight-bold">Registrace do:</td><td>{{soutez.regdo}}</td><td></td></tr>
+            <tr><td class="font-weight-bold">Maximální počet týmů:</td><td>{{soutez.limit}}</td><td></td></tr>
+            <tr><td class="font-weight-bold">Datum zahájení soutěže:</td><td> {{soutez.zahajena | default:"Soutěž nebyla zahájena" }}</td>
+                <td>
+                    {% if soutez.aktivni %} 
+                        <i class="bi bi-check-circle" style="color: green"></i> 
+                    {% else %} 
+                        <i class="bi bi-x-octagon-fill" style="color: red"></i>
+                    {% endif %}
+                </td></tr>
+            <tr><td class="font-weight-bold">Přihlášeno týmů:</td><td> {{prihlaseno | default:"Není přihlášen žádný tým" }}</td>
+                <td>
+                    {% if soutez.is_soutez_full %}
+                        <span class="badge badge-danger">Zaplněno</span> 
+                    {% else %}   
+                        <span class="badge badge-success">Volno</span>
+                    {% endif %}   
+                </td></tr>
+                <tr><td class="font-weight-bold">Délka soutěže v minutách:</td><td>{{soutez.delkam}}</td><td></td></tr>    
+        </table>  
+    </div>    
+    <div class="col-sm-4">  
+        <table class="table table-hover mt-1 table-sm table-responsive">
+            <thead>
+                <tr>
+                    <th scope="col">Otázky v soutěži ({{ v_soutezi_celkem }})</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        {% for o in v_soutezi %}
+                            {{o.otazka__obtiznost}}:{{o.total}}
+                        {% empty %}
+                            Žádné otázky v soutěži !!
+                        {% endfor %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>    
+       <table class="table table-hover mt-3 table-sm table-responsive">
+           <thead>
+               <tr>
+                   <th scope="col">Dostupné otázky ({{ dostupne_celkem }})</th>
+               </tr>
+           </thead>
+           <tbody>
+               <tr>
+                   <td>
+                       {% for o in dostupne %}
+                           {{o.obtiznost}}:{{o.total}}   
+                       {% empty %}
+                           Žádné dostupné otázky.
+                       {% endfor %}
+                   </td>
+               </tr>
+           </tbody>
+       </table>
+    </div>
+</div>   
+<div class="row">
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        <span class="font-weight-bold">Přidání otázek do soutěže:</span>
+        {% bootstrap_form form %}
+        {% buttons %}
+            <button type="submit" class="btn btn-primary" name="b-otazky" {% if soutez.rok != akt_rok %} disabled {% endif %}>Přidat otázky do soutěže</button>
+            <button type="submit" class="btn btn-success" name="b-start"  {% if soutez.rok != akt_rok or soutez.get_aktivni or soutez.registrace %} disabled {% endif %}>Spustit Soutěž</button>
+        {% endbuttons %}  
+    </form>
+</div> 
+<div class="row mb-3">
+{% if v_soutezi_celkem == 0 %}
+    <a href="#" class="btn btn-primary  disabled ">Generovat PDF zadání</a>
+    <a href="#" class="btn btn-primary ml-1 disabled">Generovat PDF výsledky</a>
+{% else %}    
+    <a href="{% url 'admin_pdf_zadani' soutez.pk %}" class="btn btn-primary">Generovat PDF zadání</a>
+    <a href="{% url 'admin_pdf_vysledky' soutez.pk %}" class="btn btn-primary ml-1">Generovat PDF výsledky</a>
+{% endif %}
+</div>  
+<h2> Seznam týmů přihlášených do soutěže</h2>
+<div class="row mb-3" >
+    <div id="accordion" style="overflow-y: auto; height: 500px;">
+        {% for t in tymy %}
+            <div class="card">
+              <div class="card-header" id="headingOne">
+                <h5 class="mb-0">
+                  <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapse{{ forloop.counter }}" aria-expanded="true" aria-controls="collapse{{ forloop.counter }}">
+                    {{ t.cislo }}<span class="ml-3">{{ t }}</span>
+                  </button>
+                </h5>
+              </div>
+          
+              <div id="collapse{{ forloop.counter }}" class="collapse" aria-labelledby="heading{{ forloop.counter }}" data-parent="#accordion">
+                <div class="card-body">
+                    <table class="table table-hover mt-1 table-sm table-responsive">
+                    <tbody>    
+                        <tr><td>Jméno týmu: </td><td>{{ t.jmeno }}</td></tr>
+                        <tr><td>Přihlašovací jméno: </td><td>{{ t.login }}</td></tr>
+                        <tr><td>Škola: </td><td>{{ t.skola }}</td></tr>
+                        <tr><td>Registrační email: </td><td>{{ t.email }}</td></tr>
+                        <tr><td>Číslo v soutěži: </td><td>{{ t.cislo }}</td></tr>
+                        <tr><td>Datum registrace: </td><td>{{ t.cas_vytvoreni }}</td></tr>
+                        <tr><td>Soutěžící 1 </td><td>{{ t.soutezici1 }}</td></tr>
+                        <tr><td>Soutěžící 2 </td><td>{{ t.soutezici2|default:"---" }}</td></tr>   
+                        <tr><td>Soutěžící 3 </td><td>{{ t.soutezici3|default:"---" }}</td></tr>
+                        <tr><td>Soutěžící 4 </td><td>{{ t.soutezici4|default:"---" }}</td></tr>
+                        <tr><td>Soutěžící 5 </td><td>{{ t.soutezici5|default:"---" }}</td></tr>
+                    </tbody>
+                    </table>        
+                </div>
+              </div>
+            </div>
+        {% empty %}
+            Není přihlášen žádný tým.
+        {% endfor %}
+    </div>
+</div>
+<div class="row mb-3">
+    {% if tymy|length == 0 %}
+        <a href="#" class="btn btn-primary ml-1 disabled">Odeslat email přihlášeným týmům</a>
+    {% else %}    
+        <a href="{% url 'admin_email_info' soutez.pk %}" class="btn btn-primary ml-1">Odeslat email přihlášeným týmům</a>
+    {% endif %}
+    </div>  
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "admin_base.html" %}
+{% block title %} Nová soutěž {% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{{ form.media }}
+<form method="post" action="{% url 'nova_soutez' %}" autocomplete="off">
+    {% csrf_token %}
+    <div class="card bg-light" style="width:600px">
+      <div class="card-header bg-info font-weight-bold">
+        Založení nové soutěže
+      </div>
+      <div class="card-body">
+        {% bootstrap_form form %}
+      </div>  
+      <div class="card-footer">
+        {% buttons %}
+          <button type="submit" class="btn btn-primary" name="b-zaloz">Založit soutěž</button>
+        {% endbuttons %}
+      </div>  
+    </div>    
+    </form>
+{% endblock %}

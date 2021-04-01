@@ -1,0 +1,79 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+.content {
+    width: 80%;
+    margin: auto;
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
+
+footer {
+    /*position: fixed;*/
+    width: 100%;
+    height: 70;
+    background-color: CornflowerBlue;
+    text-align: center;
+   /* line-height: 70px;*/
+    vertical-align: middle;
+    bottom: 0;
+}
+
+footer a {
+    color: #212529;
+    font-weight: bold;
+}
+
+.table.table-hover1 tbody tr:hover {
+    background-color: #fbf092; 
+}
+
+.winner:hover {
+    background-color: #fbf09266; 
+}
+
+.second:hover {
+    background-color: #6180aa66; 
+}
+
+.third:hover {
+    background-color: #cd7f3266; 
+}
+
+.pleb:hover {
+    background-color: #66666666;
+}
+
+.bg-purple {
+    background-color: #684897;
+}
+
+.bg-purple-dark {
+    background-color: #563D7C;
+}
+
+.equalsignshift {
+    position: relative;
+    left: -15px;
+    display: inline-block;
+    width: 0;
+}
+
+.chat_prichozi, .chat_odchozi {
+    padding: .1em 1em;
+    border-radius: 1rem;
+    margin-bottom: 3px;
+    white-space: pre-line;
+}
+
+.chat_prichozi {
+    background-color: #a36ff0;
+    text-align: right !important;
+}
+
+.chat_odchozi {
+    background-color: #fbf092;
+}

@@ -1,0 +1,23 @@
+{% extends "soutez_base.html" %}
+{% block title %} Porvrzení registrace týmu {% endblock %}
+
+{% block registrace %}{% endblock %}
+{% block content %}
+{% load bootstrap4 %}
+
+{% if souteze %}
+    <H3> Děkujeme za Vaši registraci </H3>
+    do soutěží <b> {{ souteze }}</b>.<br>
+    Na Vaši adresu <b> {{ prijemce }} </b> Vám byl odeslán email s potvrzením registrace a vygenerovanými přihlašovacími údaji.<br>
+    <br>
+    Bylo vám vygenerováno <br>
+    přihlašovací jméno: <b>{{ login }}</b> <br>
+    heslo: <b>{{ heslo }}</b> <br>
+    Toto heslo pečlivě uschovejte, budete ho potřebovat pro přihlášení do soutěží.<br>
+    <br>
+    S pozdravem <br>
+    organizační tým GCHD<br>
+{% else %}
+    <H3> Odkaz na výsledek registrace není platný. </H3>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "admin_base.html" %}
+{% block title %}Přihlášení{% endblock %}
+{% block login-content %}
+{% load bootstrap4 %}
+
+  {% if user.is_authenticated %}
+    <div class="card bg-ight" style="width:500px">
+      <div class="card-header bg-danger"> 
+        <h4 class="card-title">Přihlášení do administrace soutěže</h4>
+      </div>
+      <div class="card-body">
+        Nemůžete se přihlásit, protože jste již přihlášení jako 
+        {{user.username}}
+      </div>
+    </div>  
+  {% else %}  
+  <form method="post" action="{% url 'admin_login' %}">
+  {% csrf_token %}
+  <div class="card bg-light" style="width:500px">
+    <div class="card-header bg-info">
+      <h4 class="card-title">Přihlášení do administrace soutěže</h4>
+    </div>
+    <div class="card-body">
+      {% bootstrap_form form %}
+    </div> 
+    <div class="card-footer"> 
+      {% buttons %}
+        <button type="submit" class="btn btn-primary">
+          Přihlásit
+        </button>
+      {% endbuttons %}
+    </div>  
+  <input type="hidden" name="next" value="{% url 'admin_index' %}">
+  </form>
+{% endif %}
+{% endblock %}

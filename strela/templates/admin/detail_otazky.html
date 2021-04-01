@@ -1,0 +1,65 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Detail otázky{% endblock %}
+
+{% block extrajs %}{% include 'latexify/stylesheets.html' %}{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{% load latexify %}
+
+{#% if otazka.stav == 0 and 'strela.kontrolazadani' in perms %}#}
+{#div class="row mb-3">#}
+{##}
+{#/div>  #}
+{#% endif %}#}
+
+<div class="row mb-3">  
+    <div class="card bg-light" style="width:700px">
+        <div class="card-header bg-info font-weight-bold">
+            Detail otázky - náhled zadání {{ otazka.typ}}-{{ otazka.pk }}
+        </div>
+        <div class="card-body">
+            {% latexify otazka.zadani|escape parse_math=True %}
+        </div>    
+    </div>
+</div>
+<div class="row">    
+    <form method="post" autocomplete="off">
+    {% csrf_token %}
+    <div class="card bg-light" style="width:700px">
+      <div class="card-header bg-info font-weight-bold">
+        Detail otázky {{ otazka.typ}}-{{ otazka.pk }} aktuální stav
+          {% if   otazka.stav == 0 %} <span class="badge badge-primary"> {{ otazka.get_stav_display }} </span>
+          {% elif otazka.stav == 1 %} <span class="badge badge-success"> {{ otazka.get_stav_display }} </span>
+          {% elif otazka.stav == 2 %} <span class="badge badge-danger"> {{ otazka.get_stav_display }} </span>
+          {% endif %}
+      </div>
+      <div class="card-body">
+          {% if otazka.stav == 1 %}
+            <fieldset disabled>
+              {% bootstrap_form form %}
+            </fieldset>  
+          {% else %}  
+              {% bootstrap_form form %}
+          {% endif %}    
+      </div>  
+      <div class="card-footer">
+        {% buttons %}
+          {% if otazka.stav == 1 %}
+            <button type="submit" class="btn btn-warning" name="b-odschvalit"> Odschválit otázku</button>
+          {% else %}  
+            <button type="submit" class="btn btn-primary" name="b-ulozit">Uložit otázku</button>
+            <button type="submit" class="btn btn-primary" name="b-nahled">Uložit otázku a náhled</button>
+            {% if 'strela.kontrolazadani' in perms %}
+              <button type="submit" class="btn btn-warning" name="b-schvalit">Schválit otázku</button>
+              <a href="{% url 'admin-otazka-delete' otazka.pk %}" class="btn btn-danger" >Smazat otázku</a>
+            {% endif %}
+          {% endif %}  
+        {% endbuttons %}
+      </div>  
+    </div>    
+    </form>
+</div>
+{% include "latexify/scripts.html" %}
+{% endblock %}

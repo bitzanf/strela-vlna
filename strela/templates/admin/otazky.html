@@ -1,0 +1,68 @@
+{% extends "admin_base.html" %}
+{% block extrajs %}
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.css"/>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css"/>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/dataTables.bootstrap4.min.js"></script>
+    {% include 'latexify/stylesheets.html' %} 
+{% endblock %}
+
+{% block title %} Otázky {% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{% load latexify %}
+<div class="row mb-3">
+   <a href="{% url 'nova_otazka' %}" class="btn btn-primary {% if not 'strela.zadavatel' in perms %} disabled {% endif %}">Nová otázka</a>
+</div>  
+<div class="row">    
+   <table class="table table-hover" id="datatable_otazky_admin">
+        <thead>
+             <tr>
+                <th scope="col">Typ</th>
+                <th scope="col">Číslo</th>
+                <th scope="col">Zadání</th>
+                <th scope="col">Obtížnost</th>
+                <th scope="col">Vyhodnocení</th>
+                <th scope="col">Stav</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for o in otazka_list %}
+                <tr class="clickable-row" data-href="{% url 'admin-otazka-detail' o.pk %}" style="cursor: pointer;">
+                    <td>{{ o.get_typ_display }}</td>   
+                    <td>{{ o.pk }}</td>   
+                    <td>{% latexify o.zadani|escape  parse_math=True %}</td>
+                    <td>{{o.obtiznost}} - {{ o.get_obtiznost_display }} </td>  
+                    <td>{{o.vyhodnoceni}} - {{ o.get_vyhodnoceni_display }} </td>  
+                    <td> 
+                        {% if   o.stav == 0 %} <span class="badge badge-primary"> {{ o.get_stav_display }} </span>
+                        {% elif o.stav == 1 %} <span class="badge badge-success"> {{ o.get_stav_display }} </span>
+                        {% elif o.stav == 2 %} <span class="badge badge-danger"> {{ o.get_stav_display }} </span>
+                        {% endif %}
+                     </td>   
+                </tr>
+                    {% empty %}
+                        <tr><td colspan=6 class="text-center">Žádné otázky k zobrazení</td></tr>
+                    {% endfor %}
+        </tbody>
+    </table> 
+    </div>
+
+<script type="text/javascript">
+    jQuery(document).ready(function($) {
+    $(".clickable-row").click(function() {
+        window.location = $(this).data("href");
+    });
+});
+$(document).ready(function() {
+        $('#datatable_otazky_admin').DataTable({
+            "pageLength": 25,
+            stateSave: true
+            });
+    } );
+</script>
+{% include "latexify/scripts.html" %}
+{% endblock %}
