@@ -53,14 +53,15 @@
 ++  - lookup pro hledani skol
     - formular na zadavani poctu bodu v off-line soutezi (jeden form pro vsechny tymy)
 ??  - cislo pri registraci tymu sekvence v soutezi nikoliv v roce 
-    - opravit kdyz se tym prihlasi do jine souteze (login spadne)
+++  - opravit kdyz se tym prihlasi do jine souteze (login spadne)
 ??  - vyhodit uznat/zamitnout kdyz tym kontaktuje podporu
     - statistiky (z LogTable)
 ---------------------------------------------------------    
 Rozšíření na dynamický počet a typy soutěží
     - Název soutěže do db
-    - typy soutěže do DB číselníku
-    - typy otázek do DB číselníku
-    - vazební tabulka soutěž na typy otázek
-    - výběr otázek do soutěže podle vazební tabulky
+ -  - typy soutěže do DB číselníku
+ -  - typy otázek do DB číselníku
+ -  - vazební tabulka soutěž na typy otázek
+ -  - výběr otázek do soutěže podle vazební tabulky
+++  - typy otázek v soutěži napevno v models.py
 --------------------------------------------------------- 

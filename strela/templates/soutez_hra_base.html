@@ -71,11 +71,11 @@
                     {% endif %}
                 {% else %}
                 <div class="alert alert-danger" role="alert">
-                    <h4 class="alert-heading">Nejste přihlášen jako soutěžící</h4>
+                    <h4 class="alert-heading">Nejste přihlášeni {% if user.is_authenticated %} jako soutěžící {% endif %}</h4>
                     <p> Jste v části webu určené pro soutěžení. 
                     Musíte být přihlášeni přihlašovacími údaji, které jste obdrželi při registraci týmu.</p>
                 </div>
-                 {% block login-content %} {% endblock %}
+                {% block login-content %} {% endblock %}
                 {% endif %}
                 </div>
             </main>

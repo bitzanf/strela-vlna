@@ -23,7 +23,7 @@ from sequences import get_next_value
 from . models import Tym, Soutez, Skola, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
 from . utils import eval_registration, tex_escape
 from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo
-from . models import FLAGDIFF, CENIK
+from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ
 
 from django import forms
 
@@ -314,14 +314,8 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
             .annotate(total=Count('otazka__obtiznost'))
         # vezme součty obtížností z předchozího dotazu, udělá z nich list hodnot součtů a sečte je dohromady.    
         context["v_soutezi_celkem"] = sum(context["v_soutezi"].values_list('total', flat=True))
-        # vezme všechny schválené otázky. Pokud je soutěž typu X, tj. soutěž Fyzka & Matematika, vybírá otázky
-        # typu Fyzika, NEBO Matematika NEBO Fyzika & Matematika
-        # pokud je soutěž jiného typu, vybírá otázky jen stejné kategorie jako je soutěž
-        qs = Otazka.objects.filter(stav=1)
-        if self.object.typ == 'X':
-            qs = qs.filter(Q(typ=self.object.typ)|Q(typ__in=('M','F')))
-        else:
-            qs = qs.filter(typ=self.object.typ)
+        # vezme všechny schválené otázky použitelné v soutěži daného typu
+        qs = Otazka.objects.filter(stav=1, typ__in=OTAZKASOUTEZ[self.object.typ])
         # ze seznamu otázek vyloučí otázky použité v letošních nebo loňských soutěžích
         # otázky seskupí podle obtížnosti a sečte počty otázek v jednotlivých obtížnostech
         context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects  
@@ -359,10 +353,8 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
                 for obtiznost in FLAGDIFF:
                     try:
                         qs = Otazka.objects.filter(stav=1, obtiznost=obtiznost[0])
-                        if self.object.typ == 'X':
-                            qs = qs.filter(Q(typ=self.object.typ)|Q(typ__in=('M','F')))
-                        else:
-                            qs = qs.filter(typ=self.object.typ)
+                        # vezme všechny schválené otázky použitelné v soutěži daného typu
+                        qs = qs.filter(typ__in=OTAZKASOUTEZ[self.object.typ])
                         qs = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
                                     .filter(soutez__rok__in=(now().year-1,now().year))
                                     .values_list('otazka__id', flat=True)))    
@@ -591,9 +583,23 @@ class SoutezLogin(LoginView):
     template_name = "strela/login_souteze.html"
 
     def form_valid(self, form):
-        logger.info("Tým {} z IP {} byl úspěšně přihlášen do hry.".format(form.get_user(),self.request.META['REMOTE_ADDR']))
-        messages.success(self. request, "Tým {} z IP {} byl úspěšně přihlášen do hry.".format(form.get_user(),self.request.META['REMOTE_ADDR']))
-        return super().form_valid(form)
+        soutez = Soutez.get_aktivni()
+        if soutez is not None:
+            try:
+                if Tym_Soutez.objects.filter(soutez=soutez, tym=form.get_user()).exists():
+                    logger.info("Tým {} z IP {} byl úspěšně přihlášen do hry.".format(form.get_user(),self.request.META['REMOTE_ADDR']))
+                    messages.success(self. request, "Tým {} z IP {} byl úspěšně přihlášen do hry.".format(form.get_user(),self.request.META['REMOTE_ADDR']))
+                    return super().form_valid(form)
+                else:
+                    raise Exception
+            except Exception:
+                messages.error(self.request, 'Nemůžete se přihlásit do soutěže, do které jste se nezaregistrovali!')
+                logger.warning("Tým {} z IP {} se pokusil přihlásit do soutěže {}, kam se nezaregistroval".format(form.get_user(),self.request.META['REMOTE_ADDR'], soutez))
+                return HttpResponseRedirect(reverse_lazy('login_souteze'))
+        else:
+            logger.info("Tým {} z IP {} byl úspěšně přihlášen do hry.".format(form.get_user(),self.request.META['REMOTE_ADDR']))
+            messages.success(self. request, "Tým {} z IP {} byl úspěšně přihlášen do hry.".format(form.get_user(),self.request.META['REMOTE_ADDR']))
+            return super().form_valid(form)
 
 
 class SoutezLogout(LogoutView):
