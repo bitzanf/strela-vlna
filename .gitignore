@@ -10,3 +10,5 @@
 /strela/management/commands/__pycache__
 /strela/migrations
 /hesla.txt
+/strela/hesla.txt
+/fixtures
