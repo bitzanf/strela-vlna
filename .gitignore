@@ -1,6 +1,7 @@
 /.vscode
 /db.sqlite3
 /filip.ppk
+/filip.pkey
 /priklady
 /requirements.txt
 /soutez.log

@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 from django_tex.shortcuts import render_to_pdf
 from django.views.generic import ListView, TemplateView, CreateView, DetailView
 from django.views import View
-from django.views.generic.edit import UpdateView, DeleteView, FormMixin
+from django.views.generic.edit import FormView, UpdateView, DeleteView, FormMixin
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.views import LoginView, LogoutView
@@ -22,7 +22,7 @@ from sequences import get_next_value
 
 from . models import Tym, Soutez, Skola, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
 from . utils import eval_registration, tex_escape
-from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo
+from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
 from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ
 
 from django import forms
@@ -399,7 +399,41 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         return super(AdminSoutezDetail, self).form_valid(form)
 
 
-class AdminPDFZadani(LoginRequiredMixin, PermissionRequiredMixin,DetailView):
+class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView):
+    permission_required = ['strela.novasoutez','strela.adminsouteze']
+    login_url = reverse_lazy("admin_login")
+    form_class = AdminSoutezMoneyForm
+    template_name = 'admin/soutez_add_money.html'
+
+    def get_success_url(self):
+        return reverse_lazy('admin_soutez_detail', kwargs={'pk': self.kwargs['pk']})
+
+    def get_context_data(self, **kwargs):
+        soutez = Soutez.objects.get(pk=self.kwargs['pk'])
+        context = super().get_context_data(**kwargs)
+        
+        context['soutez'] = soutez
+        context['prihlaseno'] = Tym_Soutez.objects.filter(soutez=soutez).count()
+        #context['form'] = self.get_form
+
+        return context
+
+    def get_form_kwargs(self):
+        form_kwargs = super().get_form_kwargs()
+        form_kwargs.update(self.kwargs)
+        return form_kwargs
+
+    @transaction.atomic
+    def form_valid(self, form):
+        for key, val in form.cleaned_data.items():
+            tym = Tym_Soutez.objects.get(tym__pk=int(key))
+            tym.penize = int(val)
+            tym.save()
+            
+        return super().form_valid(form)
+
+
+class AdminPDFZadani(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     template_name = 'admin/zadani.tex'
     permission_required = ['strela.novasoutez','strela.adminsouteze']
     login_url = reverse_lazy("admin_login")

@@ -42,6 +42,7 @@ urlpatterns = [
     path("admin/soutez/", views.AdminSoutez.as_view(), name="admin_soutez"),
     path("admin/novasoutez/", views.AdminNovaSoutez.as_view(), name="nova_soutez"),
     path("admin/detailsoutez/<int:pk>", views.AdminSoutezDetail.as_view(), name="admin_soutez_detail"),
+    path("admin/setmoney/<int:pk>", views.AdminSoutezSetMoney.as_view(), name="admin_soutez_set_money"),
 
     path("admin/pdfzadani/<int:pk>", views.AdminPDFZadani.as_view(), name="admin_pdf_zadani"),
     path("admin/pdfvysledky/<int:pk>", views.AdminPDFVysledky.as_view(), name="admin_pdf_vysledky"),

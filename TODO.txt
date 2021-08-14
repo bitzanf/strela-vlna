@@ -3,7 +3,7 @@
 ++  - Při zakládání soutěže výpis dostupných otázek.pocty a kategorie
 --  - Při operacich Update porovnávat zda neměníme již změněné.napr. schválení a odschvaleni.
 ++  - import - upravit na otvirani souboru pouze jednou,
---  - pri nakupovani otazek pridat select for update,
+--  - pri nakupovani otazek pridat select for update,   //DB to neumi :(
 ??  - pridat volbu typu importovane otazky XMF pri importu ze souboru
 ++  - resit logovani operaci (zalozeni, zmeny otazky ..) nebo history model ?
 ++  - kontrola permission a pridani adminsouteze kde je treba

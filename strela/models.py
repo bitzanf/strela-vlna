@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from django.db import models, IntegrityError
 from django.core.cache import cache
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
@@ -10,10 +12,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 FLAGMF = (
-        ("M", "Matematika"),
-        ("F", "Fyzika"),
-        ("X", "Matematika & Fyzika"),
-    )
+    ("M", "Matematika"),
+    ("F", "Fyzika"),
+    ("X", "Matematika & Fyzika"),
+)
+
+FLAGPREZENCNI = (
+    ("P", "Prezenční"),
+    ("O", "Online")
+)
 
 FLAGDIFF = (
     ("A", "Nejlehčí"),
@@ -134,6 +141,7 @@ class Tym(AbstractBaseUser):
 
 class Soutez(models.Model):
     typ = models.CharField(max_length=1, choices = FLAGMF)
+    prezencni = models.CharField(max_length=1, choices = FLAGPREZENCNI)
     aktivni = models.BooleanField(verbose_name="Soutež probíhá", default=False)
     limit = models.PositiveIntegerField(verbose_name = "Max. počet týmů",default=30)
     regod = models.DateTimeField(verbose_name = "Zahájení registrace",default=now)
@@ -150,7 +158,7 @@ class Soutez(models.Model):
         super(Soutez, self).save(*args, **kwargs)    
     
     @classmethod
-    def get_aktivni(cls):
+    def get_aktivni(cls) -> Soutez | None:
         try:
             soutez = Soutez.objects.get(rok=now().year, aktivni=True)
         except Soutez.DoesNotExist:
@@ -160,7 +168,7 @@ class Soutez(models.Model):
             return soutez
         else:
             soutez.aktivni = False 
-            logger.info("Soutěž {} byla ukončena.".format(soutez))
+            logger.info(f"Soutěž {soutez} byla ukončena.")
             soutez.save()
             return None
 

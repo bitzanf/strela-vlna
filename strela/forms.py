@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.safestring import mark_safe
 from .models import Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
 from django.utils.text import slugify
 from datetime import date
@@ -60,7 +61,7 @@ class HraOtazkaForm(forms.ModelForm):
 class AdminNovaSoutezForm(forms.ModelForm):
     class Meta:
         model = Soutez
-        fields = ['typ', 'regod','regdo', 'limit', 'delkam']
+        fields = ['typ', 'prezencni', 'regod','regdo', 'limit', 'delkam']
         widgets = {
             'regod': DateTimePickerInput(options={
                      "format": "DD.MM.YYYY HH:mm",
@@ -78,6 +79,8 @@ class AdminNovaSoutezForm(forms.ModelForm):
         rdo=self.cleaned_data.get('regdo')
         rod=self.cleaned_data.get('regod')
         typ=self.cleaned_data.get('typ')
+        prezencni=self.cleaned_data.get('prezencni')
+
         if rod:
             if rod.date() < now().date():
                 self.add_error('regod', "Registrace začíná dříve než dnes.")
@@ -92,10 +95,14 @@ class AdminNovaSoutezForm(forms.ModelForm):
         else:
             self.add_error('regdo', "Datum do je špatné")
             raise forms.ValidationError("Datum do je špatné")   
-        dbsoutez = Soutez.objects.filter(typ=typ, rok=rdo.year)
+        dbsoutez = Soutez.objects.filter(typ=typ, rok=rdo.year, prezencni=prezencni)
         if dbsoutez:
-            if  dbsoutez.count()>1 or dbsoutez.first() != self.instance:
-                self.add_error('typ', "Nelze vypsat dvě soutěže stejného typu na jeden rok.")
+            if  dbsoutez.count() > 1 or dbsoutez.first() != self.instance:
+                #self.add_error('typ', "Nelze vypsat dvě soutěže stejného typu na jeden rok.")
+                self.add_error(None, {
+                    'typ': "Nelze vypsat dvě soutěže stejného typu na jeden rok.",
+                    'prezencni': ''
+                })
 
 class AdminNovaOtazka(forms.ModelForm):
     class Meta:
@@ -124,3 +131,21 @@ class AdminEmailInfo(forms.ModelForm):
     class Meta:
         model = EmailInfo
         fields = ['zprava']
+
+class AdminSoutezMoneyForm(forms.Form):
+    soutez: Soutez
+
+    def __init__(self, *args, **kwargs):
+        soutez_pk = kwargs.pop('pk')
+        super().__init__(*args, **kwargs)
+        #kwargs['pk'] = soutez_pk
+        self.soutez = Soutez.objects.get(pk=soutez_pk)
+        TvS = Tym_Soutez.objects.filter(soutez=self.soutez)
+        for tym in TvS:
+            #self.fields[tym.tym.login] = forms.IntegerField(required=True, min_value=0, label='Získané peníze týmu \"' + tym.tym.jmeno + '\"', initial=tym.penize)
+            self.fields[str(tym.tym.pk)] = forms.IntegerField(required=True, min_value=0, label='Získané peníze týmu \"' + tym.tym.jmeno + '\"', initial=tym.penize)
+
+    def clean(self):
+        super().clean()
+        if self.soutez.prezencni == 'O':
+            raise forms.ValidationError("Body lze přiřadit jen prezeční soutěži")

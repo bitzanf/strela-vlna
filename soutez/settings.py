@@ -159,7 +159,8 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 INTERNAL_IPS = [
     '193.165.96.249',
     '127.0.0.1',
-    '195.113.62.220'
+    '195.113.62.220',
+    '90.179.35.68'
 ]
 
 CACHES = {

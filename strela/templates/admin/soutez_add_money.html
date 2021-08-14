@@ -1,0 +1,23 @@
+{% extends "admin_base.html" %}
+{% block title %} Detail Soutěže {% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+
+<div class="row mb-3">  
+    <h2> Soutěž : <span class="font-weight-bold">{{ soutez }}</span> - {{soutez.nazev}} </h2>
+</div>
+
+<div class="row">
+    <form method="post" autocomplete="off">
+        {% csrf_token %}
+        <b><u>Ruční přiřazení peněz týmům</u></b>
+        <br>&nbsp;
+        {% bootstrap_form form %}
+        {% buttons %}
+            <button type="submit" class="btn btn-primary">Uložit</button>
+        {% endbuttons %}  
+    </form>
+</div> 
+
+{% endblock %}

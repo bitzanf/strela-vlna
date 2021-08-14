@@ -91,50 +91,58 @@ class SoutezCreationForm(forms.ModelForm):
 
     class Meta:
         model = Soutez
-        fields = ['typ', 'limit', 'regod', 'regdo', 'zahajena', 'delkam'] 
+        fields = ['typ', 'prezencni', 'limit', 'regod', 'regdo', 'zahajena', 'delkam'] 
 
     def clean(self):
         super().clean()
         rdo=self.cleaned_data.get('regdo')
         rod=self.cleaned_data.get('regod')
         typ=self.cleaned_data.get('typ')
+        prezencni=self.cleaned_data.get('prezencni')
         if rod.date() < now().date():
             self.add_error('regod', "Registrace začíná dříve než dnes.")
         if rdo < rod:
             self.add_error('regdo', "Registrace končí dříve než začíná.")
-        dbsoutez = Soutez.objects.filter(typ=typ, rok=rdo.year)
+        dbsoutez = Soutez.objects.filter(typ=typ, rok=rdo.year, prezencni=prezencni)
         if dbsoutez:
             if  dbsoutez.count()>1 or dbsoutez.first() != self.instance:
-                self.add_error('typ', "Nelze vypsat dvě soutěže stejného typu na jeden rok.")
+                self.add_error(None, {
+                    'typ': "Nelze vypsat dvě soutěže stejného typu na jeden rok.",
+                    'prezencni': ''
+                })
 
 class SoutezChangeForm(forms.ModelForm):
     class Meta:
         model = Soutez
-        fields = ['typ', 'limit', 'regod', 'regdo', 'zahajena', 'delkam' ] 
+        fields = ['typ', 'prezencni', 'limit', 'regod', 'regdo', 'zahajena', 'delkam' ] 
 
     def clean(self):
         super().clean()
         rdo=self.cleaned_data.get('regdo')
         rod=self.cleaned_data.get('regod')
         typ=self.cleaned_data.get('typ')
+        prezencni=self.cleaned_data.get('prezencni')
         if rdo < rod:
             self.add_error('regdo', "Registrace končí dříve než začíná.")
-        dbsoutez = Soutez.objects.filter(typ=typ, rok=rdo.year)
+        dbsoutez = Soutez.objects.filter(typ=typ, rok=rdo.year, prezencni=prezencni)
         if dbsoutez:
             if  dbsoutez.count()>1 or dbsoutez.first() != self.instance:
-                self.add_error('typ', "Nelze vypsat dvě soutěže stejného typu na jeden rok.")
+                self.add_error(None, {
+                    'typ': "Nelze vypsat dvě soutěže stejného typu na jeden rok.",
+                    'prezencni': ''
+                })
 
 
 class SoutezAdmin(admin.ModelAdmin):
     form = SoutezChangeForm
     add_form = SoutezCreationForm
 
-    list_display = ('typ', 'nazev', 'aktivni', 'rok', 'regod','regdo','limit', 'zahajena','registrace', 'delkam')  
+    list_display = ('typ', 'prezencni', 'nazev', 'aktivni', 'rok', 'regod','regdo','limit', 'zahajena','registrace', 'delkam')  
     fieldsets = (
-        (None, {'fields': ['typ', 'limit', 'aktivni', 'regod', 'regdo', 'zahajena', 'delkam'] }),
+        (None, {'fields': ['typ', 'prezencni', 'limit', 'aktivni', 'regod', 'regdo', 'zahajena', 'delkam'] }),
     )
     add_fieldsets =  (
-        (None, {'fields': ['typ', 'limit', 'regod', 'regdo',  'zahajena', 'delkam']}),
+        (None, {'fields': ['typ', 'prezencni', 'limit', 'regod', 'regdo',  'zahajena', 'delkam']}),
     )
     def get_form(self, request, obj=None, **kwargs):
         if not obj:
