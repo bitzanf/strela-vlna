@@ -51,7 +51,7 @@
 ++  - messages o informaci posledni udalosti tymu (odeslani/vyreseni atd.)
 ++  - nejlehci jdou do bazaru donekonecna
 ++  - lookup pro hledani skol
-    - formular na zadavani poctu bodu v off-line soutezi (jeden form pro vsechny tymy)
+++  - formular na zadavani poctu bodu v off-line soutezi (jeden form pro vsechny tymy)
 ??  - cislo pri registraci tymu sekvence v soutezi nikoliv v roce 
 ++  - opravit kdyz se tym prihlasi do jine souteze (login spadne)
 ??  - vyhodit uznat/zamitnout kdyz tym kontaktuje podporu
