@@ -38,9 +38,11 @@ class RegistraceForm(forms.ModelForm):
 
         has_soutez = False
         valid_soutez = False
+        rx = re.compile('soutez(?P<pk>\d+)')
         for s in self.data.keys():
-            if re.search('soutez\d+', s) is not None:
-                pk = int(s[len('soutez'):])
+            m = rx.match(s)
+            if m is not None:
+                pk = int(m.group('pk'))
                 soutez = Soutez.objects.filter(rok=now().year, pk=pk)
                 if soutez.exists():
                     has_soutez = True

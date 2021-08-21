@@ -513,17 +513,20 @@ class RegistraceIndex(CreateView):
 
         souteze = Soutez.objects.filter(rok=aktualni_rok)
         soutez_txt = ""
+        rx = re.compile('soutez(?P<pk>\d+)')
         try:
             for s in souteze:
                 for k in form.data.keys():
-                    if re.search('soutez\d+', k) is not None:
-                        pk = int(k[len('soutez'):])
+                    m = rx.match(k)
+                    if m is not None:
+                        pk = int(m.group('pk'))
                         if s.pk == pk:
                             Tym_Soutez.objects.create(tym=formular, soutez=s)
                             soutez_txt += str(s) + ', '
         except Exception as e:
             logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
             messages.error(self.request, "Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
+            return HttpResponseRedirect(reverse_lazy('registrace_souteze'))
 
         logger.info("Z IP {} byla provedena registrace týmu {}.".format(self.request.META['REMOTE_ADDR'], form.instance))
         # odeslání emailu s potvrzením registrace
