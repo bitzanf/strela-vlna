@@ -21,12 +21,13 @@ from django.utils.crypto import get_random_string
 from sequences import get_next_value
 
 from . models import Tym, Soutez, Skola, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
-from . utils import eval_registration, tex_escape
+from . utils import eval_registration, tex_escape, make_tym_login
 from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
 from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ
 
 from django import forms
 
+import re
 import datetime
 import logging
 logger = logging.getLogger(__name__)
@@ -385,6 +386,9 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
             elif self.object.registrace:
                 messages.error(self.request, "Nelze spustit soutěž v průběhu registrace.")
                 logger.error("Uživatel {} se pokusil zahájit soutěž v průběhu registrace.".format(self.request.user))
+            elif self.object.zahajena is not None:
+                messages.error(self.request, "Nelze spustit již dříve spuštěnou soutěž.")
+                logger.error("Uživatel {} se pokusil zahájit již dříve spuštěnou soutěž.".format(self.request.user))
             else:    
                 try:
                     soutez = self.object
@@ -413,7 +417,11 @@ class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView)
         context = super().get_context_data(**kwargs)
         
         context['soutez'] = soutez
-        context['prihlaseno'] = Tym_Soutez.objects.filter(soutez=soutez).count()
+        if Soutez.get_aktivni() == soutez or soutez.zahajena is None:
+            context['soutez_valid'] = True
+        else:
+            context['soutez_valid'] = False
+        #context['prihlaseno'] = Tym_Soutez.objects.filter(soutez=soutez).count()
         #context['form'] = self.get_form
 
         return context
@@ -425,8 +433,14 @@ class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView)
 
     @transaction.atomic
     def form_valid(self, form):
+        soutez = Soutez.objects.filter(pk=self.kwargs['pk']).first()
+        if Soutez.get_aktivni() is None and soutez is not None:
+            soutez.zahajena = now()
+            soutez.aktivni = True
+            soutez.save()
+
         for key, val in form.cleaned_data.items():
-            tym = Tym_Soutez.objects.get(tym__pk=int(key))
+            tym = Tym_Soutez.objects.get(tym__pk=int(key), soutez=soutez)
             tym.penize = int(val)
             tym.save()
             
@@ -490,22 +504,26 @@ class RegistraceIndex(CreateView):
     def form_valid(self, form):
         formular = form.save(commit=False)
         aktualni_rok = now().year
-        formular.login=slugify(formular.jmeno).replace("-", "") + str(aktualni_rok)
+        formular.login = make_tym_login(formular.jmeno)
         password = Tym.objects.make_random_password(length=8, allowed_chars='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789')
         formular.set_password(password)
-        formular.cislo=get_next_value(aktualni_rok)
+        formular.cislo = get_next_value(aktualni_rok)
         # zpracujeme seznam soutezi na ktere se prihlasili
-        souteze = Soutez.objects.filter(rok=aktualni_rok)
         formular.save()
+
+        souteze = Soutez.objects.filter(rok=aktualni_rok)
         soutez_txt = ""
         try:
             for s in souteze:
-                if form.data.get("soutez"+s.typ):
-                    Tym_Soutez.objects.create(tym=formular, soutez=s)
-                    soutez_txt += str(s) +" "
+                for k in form.data.keys():
+                    if re.search('soutez\d+', k) is not None:
+                        pk = int(k[len('soutez'):])
+                        if s.pk == pk:
+                            Tym_Soutez.objects.create(tym=formular, soutez=s)
+                            soutez_txt += str(s) + ', '
         except Exception as e:
-            logger.error("Došlo k chybě {} při registraci týmu {}  z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))    
-            messages.error(self.request, "Došlo k chybě {} při registraci týmu {}  z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
+            logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
+            messages.error(self.request, "Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
 
         logger.info("Z IP {} byla provedena registrace týmu {}.".format(self.request.META['REMOTE_ADDR'], form.instance))
         # odeslání emailu s potvrzením registrace
@@ -513,7 +531,7 @@ class RegistraceIndex(CreateView):
             'prijemce': formular.email,
             'heslo': password,
             'login': formular.login,
-            'souteze': soutez_txt
+            'souteze': soutez_txt[:-2]  #umazat poslední mezeru a čárku
         }
         # finta - abychom nepřenášeli login a heslo mimo server mezi View,
         # vygenerujeme si náhodný klíč a pod tímto klíčem uložíme údaje do session
@@ -525,7 +543,7 @@ class RegistraceIndex(CreateView):
         self.request.session.update({key:context})
         message = render_to_string('admin/email_registrace.txt', context)
         email = EmailMessage(
-            subject = "Potvrzení registrace.",
+            subject = "Potvrzení registrace",
             body = message,
             to = (formular.email,) 
         )
@@ -687,6 +705,7 @@ class HraIndexJsAPI(TemplateView):
         context["cenik_o"] = list(zip(CENIK.items(), FLAGDIFF))
         try:
             context["aktivni_soutez"] = Soutez.get_aktivni()
+            if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
             context["tym"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=context["aktivni_soutez"]) 
             context["otazky"] = Tym_Soutez_Otazka.objects.filter(tym=self.request.user, soutez=context["aktivni_soutez"]).exclude(otazka__id__in=Otazka.objects.filter(stav=2).values_list('id', flat=True))
             context["o_vyreseno"] = context["otazky"].filter(stav=3).count()
@@ -721,8 +740,10 @@ class HraIndex(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["is_user_tym"] = isinstance(self.request.user, Tym)
+        context["soutez_valid"] = False
         try:
             context["aktivni_soutez"] = Soutez.get_aktivni()
+            if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
         except Soutez.DoesNotExist as e:
             context["aktivni_soutez"] = None
             logger.error("Tým {} se snaží soutěžit když není aktivní žádná soutěž.".format(self.request.user))

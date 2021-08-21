@@ -8,6 +8,9 @@ from bootstrap_datepicker_plus import DateTimePickerInput
 from django.forms import HiddenInput, DecimalField
 from .lookups import SkolaLookup
 from selectable.forms.widgets import AutoCompleteSelectWidget
+from . utils import make_tym_login
+
+import re
 
 class RegistraceForm(forms.ModelForm):
 
@@ -23,15 +26,38 @@ class RegistraceForm(forms.ModelForm):
     def clean(self):
         super().clean()
         # tým musí zaškrtnout alespoň jednu soutěž
-        pocitadlo=0
-        souteze = Soutez.objects.filter(rok=now().year)
-        for s in souteze:
-            if self.cleaned_data.get("soutez"+s.typ) :    
-                pocitadlo += 1
-        if pocitadlo == 0:
+
+        #souteze = Soutez.objects.filter(rok=now().year)
+        #has_soutez = False
+        #for s in souteze:
+        #    if self.cleaned_data.get("soutez"+s.typ) :
+        #        has_soutez = True
+        #        break
+        #if not has_soutez:
+        #    raise forms.ValidationError('Musíte zvolit alespoň jednu soutěž')
+
+        has_soutez = False
+        valid_soutez = False
+        for s in self.data.keys():
+            if re.search('soutez\d+', s) is not None:
+                pk = int(s[len('soutez'):])
+                soutez = Soutez.objects.filter(rok=now().year, pk=pk)
+                if soutez.exists():
+                    has_soutez = True
+                    if soutez[0].registrace and not soutez[0].is_soutez_full:   #queryset, ne objekt
+                        valid_soutez = True
+                    else:
+                        valid_soutez = False
+                        break
+        if not has_soutez:
             raise forms.ValidationError('Musíte zvolit alespoň jednu soutěž')
+        if not valid_soutez:
+            raise forms.ValidationError('Nemůžete se registrovat do již uzavřených soutěží')
+        
         # kontrola na unikátnost jména
-        login = slugify(self.cleaned_data["jmeno"]).replace("-", "")+date.today().strftime("%Y")
+        login = make_tym_login(self.cleaned_data["jmeno"])
+        if len(login) > 50:
+            raise forms.ValidationError('Jméno týmu je příliš dlouhé (max cca 50 znaků).')
         if Tym.objects.filter(login=login).count() > 0:
            raise forms.ValidationError('Login týmu není jedinečný, musíte zvolit jiné jméno týmu.')
 
@@ -40,7 +66,7 @@ class RegistraceForm(forms.ModelForm):
         souteze = Soutez.objects.filter(rok=now().year)
         for s in souteze:
             if s.registrace and not s.is_soutez_full:
-                self.fields["soutez"+s.typ] = forms.BooleanField( required=False, label=s.nazev+" ("+s.get_typ_display()+")")
+                self.fields["soutez"+str(s.pk)] = forms.BooleanField(required=False, label=s.pretty_name())
 
 class HraOtazkaForm(forms.ModelForm):
     sazka = DecimalField(widget=HiddenInput(attrs={'id': 'sazka_penize'}), required=False, min_value=0)

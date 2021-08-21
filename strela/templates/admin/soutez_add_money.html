@@ -9,6 +9,7 @@
 </div>
 
 <div class="row">
+    {% if soutez_valid %}
     <form method="post" autocomplete="off">
         {% csrf_token %}
         <b><u>Ruční přiřazení peněz týmům</u></b>
@@ -18,6 +19,12 @@
             <button type="submit" class="btn btn-primary">Uložit</button>
         {% endbuttons %}  
     </form>
+    {% else %}
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading">Tuto soutěž už není možné upravit</h4>
+        <p>Tato soutěž proběhla již dávno, takže ji nelze upravovat výsledky.</p>
+    </div>
+    {% endif %}
 </div> 
 
 {% endblock %}

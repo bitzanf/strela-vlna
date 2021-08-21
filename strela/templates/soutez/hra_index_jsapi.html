@@ -11,86 +11,93 @@
 
     {% if aktivni_soutez %}
         {% if is_user_tym %}
-            <div class="row"><h2>{{ tym.tym }}</h2></div>
+            {% if soutez_valid %}
+                <div class="row"><h2>{{ tym.tym }}</h2></div>
 
-            <div class="row mb-5">
-                <span class="badge badge-info font-weight-bold mr-5" title = "Aktuální množství peněz týmu"><h2>{{ tym.penize }} DC<span class="equalsignshift" style="left: -30px; top: -2px">=</span></h2> Peníze týmu</span>
-                <span class="badge badge-success font-weight-bold ml-2" title = "Počet vyřešených otázek"><h2>{{ o_vyreseno }}</h2> Vyřešeno otázek</span>
-                <span class="badge badge-primary font-weight-bold ml-2" title = "Zakoupené a dosud neřešené otázky"><h2>{{ o_zakoupene }}</h2> Zakoupené </span>
-                <span class="badge badge-danger font-weight-bold ml-2" title = "Špatně vyřešené otázky a otázky na technické podpoře"><h2>{{ o_problemy }}</h2> Problémové</span>
-                <span class="badge badge-{{ color }} ml-auto" id="cas"><h3>{{ konec }}</h3>Konec soutěže</span>
-            </div>
-
-            <div class="row mb-5">
-                <div class="card">
-                    <div class="card-header text-center">
-                        <b>Nákup otázek</b>
-                    </div>
-                <table class="table">
-                    <tr>
-                        {% for i in cenik_o %}
-                            <td>
-                                <a href="{% url 'koupit_otazku' i.1.0 0 %}" class="btn btn-primary {% if tym.penize < i.0.1.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.0 }} DC<span class="equalsignshift">=</span></a>
-                            </td>
-                        {% endfor %}
-                    </tr>
-                </table>
+                <div class="row mb-5">
+                    <span class="badge badge-info font-weight-bold mr-5" title = "Aktuální množství peněz týmu"><h2>{{ tym.penize }} DC<span class="equalsignshift" style="left: -30px; top: -2px">=</span></h2> Peníze týmu</span>
+                    <span class="badge badge-success font-weight-bold ml-2" title = "Počet vyřešených otázek"><h2>{{ o_vyreseno }}</h2> Vyřešeno otázek</span>
+                    <span class="badge badge-primary font-weight-bold ml-2" title = "Zakoupené a dosud neřešené otázky"><h2>{{ o_zakoupene }}</h2> Zakoupené </span>
+                    <span class="badge badge-danger font-weight-bold ml-2" title = "Špatně vyřešené otázky a otázky na technické podpoře"><h2>{{ o_problemy }}</h2> Problémové</span>
+                    <span class="badge badge-{{ color }} ml-auto" id="cas"><h3>{{ konec }}</h3>Konec soutěže</span>
                 </div>
-            </div>
 
-            <div class="row mb-5">
-                <div class="card">
-                    <div class="card-header text-center">
-                        <b>Nákup otázek z bazaru</b>
+                <div class="row mb-5">
+                    <div class="card">
+                        <div class="card-header text-center">
+                            <b>Nákup otázek</b>
+                        </div>
+                    <table class="table">
+                        <tr>
+                            {% for i in cenik_o %}
+                                <td>
+                                    <a href="{% url 'koupit_otazku' i.1.0 0 %}" class="btn btn-primary {% if tym.penize < i.0.1.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.0 }} DC<span class="equalsignshift">=</span></a>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
                     </div>
-                <table class="table">
-                    <tr>
-                        {% for i in cenik_o %}
-                            <td>
-                                <a href="{% url 'koupit_otazku' i.1.0 1 %}" class="btn btn-secondary {% if tym.penize < i.0.1.2 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.2 }} DC<span class="equalsignshift">=</span></a>
-                            </td>
-                        {% endfor %}
-                    </tr>
-                </table>
                 </div>
-            </div>
 
-            <div class="row">
-                <div class="card">
-                    <div class="card-header text-center">
-                        <b>Zakoupené otázky</b>
+                <div class="row mb-5">
+                    <div class="card">
+                        <div class="card-header text-center">
+                            <b>Nákup otázek z bazaru</b>
+                        </div>
+                    <table class="table">
+                        <tr>
+                            {% for i in cenik_o %}
+                                <td>
+                                    <a href="{% url 'koupit_otazku' i.1.0 1 %}" class="btn btn-secondary {% if tym.penize < i.0.1.2 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.2 }} DC<span class="equalsignshift">=</span></a>
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </table>
                     </div>
-                    <table class="table table-hover" id="datatable_otazky">
-                        <thead>
-                            <tr>
-                                <th scope="col">Typ</th>
-                                <th scope="col">Zadání</th>
-                                <th scope="col">Obtížnost</th>
-                                <th scope="col">Stav</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for o in otazky %}
-                                <tr class="clickable-row" data-href="{% url 'otazka-detail' o.pk %}" style="cursor: pointer;">
-                                    <td>{{ o.otazka.get_typ_display }}</td>   
-                                    <td>{% latexify o.otazka.zadani parse_math=True %}</td>
-                                    <td>{{o.otazka.obtiznost}} - {{ o.otazka.get_obtiznost_display }}</td>
-                                    <td> 
-                                        {% if   o.stav == 1 %} <span class="badge badge-primary"> {{ o.get_stav_display }} </span>
-                                        {% elif o.stav == 2 or o.stav == 4 %} <span class="badge badge-warning"> {{ o.get_stav_display }} </span>
-                                        {% elif o.stav == 3 %} <span class="badge badge-success"> {{ o.get_stav_display }} </span>
-                                        {% elif o.stav == 7 %} <span class="badge badge-danger" > {{ o.get_stav_display }} </span>
-                                        {% elif o.stav == 6 %} <span class="badge badge-secondary" > {{ o.get_stav_display }} </span>
-                                        {% endif %}
-                                     </td>   
+                </div>
+
+                <div class="row">
+                    <div class="card">
+                        <div class="card-header text-center">
+                            <b>Zakoupené otázky</b>
+                        </div>
+                        <table class="table table-hover" id="datatable_otazky">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Typ</th>
+                                    <th scope="col">Zadání</th>
+                                    <th scope="col">Obtížnost</th>
+                                    <th scope="col">Stav</th>
                                 </tr>
-                                    {% empty %}
-                                        <tr><td colspan=4 class="text-center">Žádné otázky k zobrazení</td></tr>
-                                    {% endfor %}
-                        </tbody>
-                    </table> 
-                </div> 
+                            </thead>
+                            <tbody>
+                                {% for o in otazky %}
+                                    <tr class="clickable-row" data-href="{% url 'otazka-detail' o.pk %}" style="cursor: pointer;">
+                                        <td>{{ o.otazka.get_typ_display }}</td>   
+                                        <td>{% latexify o.otazka.zadani parse_math=True %}</td>
+                                        <td>{{o.otazka.obtiznost}} - {{ o.otazka.get_obtiznost_display }}</td>
+                                        <td> 
+                                            {% if   o.stav == 1 %} <span class="badge badge-primary"> {{ o.get_stav_display }} </span>
+                                            {% elif o.stav == 2 or o.stav == 4 %} <span class="badge badge-warning"> {{ o.get_stav_display }} </span>
+                                            {% elif o.stav == 3 %} <span class="badge badge-success"> {{ o.get_stav_display }} </span>
+                                            {% elif o.stav == 7 %} <span class="badge badge-danger" > {{ o.get_stav_display }} </span>
+                                            {% elif o.stav == 6 %} <span class="badge badge-secondary" > {{ o.get_stav_display }} </span>
+                                            {% endif %}
+                                         </td>   
+                                    </tr>
+                                        {% empty %}
+                                            <tr><td colspan=4 class="text-center">Žádné otázky k zobrazení</td></tr>
+                                        {% endfor %}
+                            </tbody>
+                        </table> 
+                    </div> 
+                </div>
+            {% else %}
+            <div class="alert alert-danger" role="alert">
+                <h4 class="alert-heading">Tato soutěž je prezenční</h4>
+                <p>V prezenční formě soutěže není možné se účastnit pomocí online systému</p>
             </div>
+            {% endif %}
         {% else %}
         <div class="alert alert-danger" role="alert">
             <h4 class="alert-heading">Nejste přihlášen jako soutěžící</h4>
@@ -101,7 +108,7 @@
     {% else %}
         <div class="alert alert-danger" role="alert">
             <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
-            <p>Nemůžete se přihlásit, jelikož není spuštěna žádná soutěž</p>
+            <p>Nemůžete soutěžit, jelikož není spuštěna žádná soutěž</p>
         </div>
     {% endif %}
     {% include "latexify/scripts.html" %}

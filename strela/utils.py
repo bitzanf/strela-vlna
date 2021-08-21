@@ -1,10 +1,11 @@
 from . models import Tym, Soutez, Skola, Tym_Soutez
 from django.utils.timezone import now
 from django.contrib import messages
+from django.utils.text import slugify
 import re
 
 def eval_registration(self):
-    context = {}
+    context: dict[str, ] = {}
     reg = Soutez.objects.filter(rok=now().year)
 
     if reg.count() == 0:
@@ -20,10 +21,13 @@ def eval_registration(self):
                     context["registrace"] = True        
     return context
 
+def make_tym_login(jmeno: str) -> str:
+    """vytvori login tymu na zaklade jmena a aktualniho roku"""
+    return slugify(jmeno).replace("-", "") + str(now().year)
+
 import sys
 
-def ProgressBar (iteration, total, prefix = '', suffix = '', decimals = 2,
-    barLength = 100):
+def ProgressBar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 2, barLength: int = 100):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -42,7 +46,7 @@ def ProgressBar (iteration, total, prefix = '', suffix = '', decimals = 2,
     if iteration == total:
         print(u"\n")
 
-def tex_escape(text):
+def tex_escape(text: str):
     """
         :param text: a plain text message
         :return: the message escaped to appear correctly in LaTeX

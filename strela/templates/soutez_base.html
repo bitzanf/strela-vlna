@@ -61,14 +61,14 @@
                 {% for r in soutez %}
                 {% if r.registrace %}
                         <div class="mb-0">
-                                Registrace do soutěže <b> {{ r.nazev }} </b>pro rok {{ r.rok }} probíhá od {{ r.regod }} do {{ r.regdo }}
+                                Registrace do soutěže <b> {{ r.pretty_name }} </b>pro rok {{ r.rok }} probíhá od {{ r.regod }} do {{ r.regdo }}
                                 {% if not r.is_soutez_full %}
                                     <a href={% url "registrace_souteze" %}>online </a>
                                 {% endif %}
                         </div>
                 {% else %}
                         <div class="mb-0">
-                                Registrace do soutěže <b> {{r.nazev}} </b> pro rok {{ r.rok }} již byla ukončena.
+                                Registrace do soutěže <b> {{ r.pretty_name }} </b> pro rok {{ r.rok }} již byla ukončena.
                         </div>
                 {% endif %}
                 {% endfor %}

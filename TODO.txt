@@ -32,7 +32,7 @@
 ++  - seznam konverzaci tymu
 ++  - prenacist stranku po zmene stavu otazky (provede se po odeslani formulare)
 ++  - pri chybe u konverzace zalogovat do souboru
-    - do ostreho provozu nedovolit spusteni jiz probehle souteze
+++  - do ostreho provozu nedovolit spusteni jiz probehle souteze
 ++  - kontrola vsazene castky z duvodu rucniho zadani do inputboxu
 ++  - vypisovat sazku i v detailu otazky tymu
 ++  - kontrola vsazene castky aby se neodecetlo do zaporne hodnoty ( po rucnim zadani)

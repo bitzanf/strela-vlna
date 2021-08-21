@@ -42,7 +42,7 @@
                 <nav class="navbar navbar-expand navbar-dark bg-dark flex-md-column flex-row align-items-start py-2" style="font-size:20px">
                     <div class="collapse navbar-collapse">
                         <ul class="flex-md-column flex-row navbar-nav w-100 justify-content-between">
-                        {% if perms.strela.soutezici and aktivni_soutez %}
+                        {% if perms.strela.soutezici and aktivni_soutez and soutez_valid %}
                             <li class="nav-item"><a class="nav-link pl-0 {% if request.path == herni_server__ %} active {% endif %}" href="{% url "herni_server" %}">Můj tým</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 {% if request.path == hra_udalostitymu__ %} active {% endif %}" href="{% url "hra_udalostitymu" %}">Události týmu</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 {% if tym_chat_list__ in request.path %} active {% endif %}" href="{% url "tym_chat_list" %}">Konverzace týmu</a></li>
@@ -62,11 +62,18 @@
                 {% bootstrap_messages %}
                 {% if perms.strela.soutezici %}    
                     {% if aktivni_soutez %}
-                        {% block content %} {% endblock %}
+                        {% if soutez_valid %}
+                            {% block content %} {% endblock %}
+                        {% else %}
+                        <div class="alert alert-danger" role="alert">
+                            <h4 class="alert-heading">Tato soutěž je prezenční</h4>
+                            <p>V prezenční formě soutěže není možné se účastnit pomocí online systému</p>
+                        </div>
+                        {% endif %}
                     {% else %}
                         <div class="alert alert-danger" role="alert">
                             <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
-                            <p>Nemůžete se přihlásit, jelikož není spuštěna žádná soutěž</p>
+                            <p>Nemůžete soutěžit, jelikož není spuštěna žádná soutěž</p>
                         </div>
                     {% endif %}
                 {% else %}

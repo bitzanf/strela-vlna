@@ -28,7 +28,7 @@
 <div>  
        <p>Letos vypsané soutěže:</p>
        {% for r in soutez %}
-       <b> {{ r.nazev }} ({{ r.rok }})</b><br>
+       <b> {{ r.pretty_name }} ({{ r.rok }})</b><br>
        {% empty %}
        <b>Žádné soutěže nebyly ještě letos vypsány</b>
        {% endfor %}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.db import models, IntegrityError
+from django.db import models, IntegrityError, transaction
 from django.core.cache import cache
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
 from django.forms import ValidationError
@@ -151,13 +151,14 @@ class Soutez(models.Model):
     delkam = models.PositiveIntegerField(verbose_name = "Délka soutěže",default=120)
 
     def __str__(self):
-        return "{0} {1}".format(self.get_typ_display(), self.rok) #"Matematika 2020"
+        return "{} {} [{}]".format(self.get_typ_display(), self.rok, self.prezencni) #"Matematika 2020"
 
     def save(self, *args, **kwargs):
         self.rok = self.regdo.strftime("%Y")
         super(Soutez, self).save(*args, **kwargs)    
     
     @classmethod
+    @transaction.atomic
     def get_aktivni(cls) -> Soutez | None:
         try:
             soutez = Soutez.objects.get(rok=now().year, aktivni=True)
@@ -173,7 +174,7 @@ class Soutez(models.Model):
             return None
 
     @property
-    def registrace(self):
+    def registrace(self) -> bool:
         t = now()
         return (self.regod <= t) and (t <= self.regdo)
 
@@ -182,17 +183,21 @@ class Soutez(models.Model):
         return FLAGNAME[self.typ]
 
     @property
-    def zamereni(self):
+    def zamereni(self) -> str:
         return self.get_typ_display()
 
     @property
-    def is_soutez_full(self):
+    def is_soutez_full(self) -> bool:
         prihlaseni = Tym_Soutez.objects.filter(soutez=self).count()
         return prihlaseni >= self.limit
 
     class Meta:
         verbose_name="Soutěž"
         verbose_name_plural="Soutěže"
+    
+    def pretty_name(self) -> str:
+        """`Pražská střela (Matematika) [Prezenční]`"""
+        return self.nazev + ' (' + self.zamereni + ') [' + self.get_prezencni_display() + ']'
     
 
 class Tym_Soutez(models.Model):
