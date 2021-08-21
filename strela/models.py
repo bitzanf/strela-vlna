@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from django.db import models, IntegrityError, transaction
+from django.db import models, transaction
 from django.core.cache import cache
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
-from django.forms import ValidationError
 
 from django.utils.timezone import now
 #import json

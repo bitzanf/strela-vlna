@@ -1,7 +1,5 @@
-from django.core import exceptions
-from django.db.models.expressions import OrderBy
 from django.utils.timezone import now
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django_tex.shortcuts import render_to_pdf
 from django.views.generic import ListView, TemplateView, CreateView, DetailView
 from django.views import View
@@ -16,11 +14,10 @@ from django.urls import reverse_lazy
 from django.db.models import Q, Count
 from django.db import transaction
 from django.http import HttpResponseRedirect
-from django.utils.text import slugify
 from django.utils.crypto import get_random_string
 from sequences import get_next_value
 
-from . models import Tym, Soutez, Skola, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
+from . models import Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
 from . utils import eval_registration, tex_escape, make_tym_login
 from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
 from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ
@@ -522,7 +519,7 @@ class RegistraceIndex(CreateView):
                         pk = int(m.group('pk'))
                         if s.pk == pk:
                             Tym_Soutez.objects.create(tym=formular, soutez=s)
-                            soutez_txt += str(s) + ', '
+                            soutez_txt += s.pretty_name() + ' (' + str(s.rok) + '), '
         except Exception as e:
             logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
             messages.error(self.request, "Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
@@ -767,6 +764,7 @@ class HraUdalostitymu(LoginRequiredMixin, TemplateView):
         if aktivni_soutez:
             try:
                 context["aktivni_soutez"] = aktivni_soutez
+                if aktivni_soutez is not None: context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
                 context["log_tymu"] = LogTable.objects.filter(tym=self.request.user, soutez=aktivni_soutez).order_by('-cas')
             except Exception as e:
                 messages.error(self.request, "Chyba: {0}".format(e))
@@ -791,6 +789,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             context["is_user_tym"] = isinstance(self.request.user, Tym)
             context["was_otazka_podpora"] = self.object.bylaPodpora
             context["max_penize"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.soutez).penize
+            context["soutez_valid"] = True if self.object.soutez.prezencni == 'O' else False
             if self.object.soutez.aktivni:
                 context["aktivni_soutez"] = True
             else:             
@@ -937,7 +936,8 @@ class SoutezVysledkyJsAPI(TemplateView):
         context = super().get_context_data(**kwargs)
         try:
             aktivni_soutez = Soutez.get_aktivni()
-        except Soutez.DoesNotExist as e:
+            if aktivni_soutez is not None: context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
+        except Soutez.DoesNotExist:
             messages.warning(self.request, "Není spuštěna žádná aktivní soutěź")
             logger.error("Není spuštěna žádná aktivní soutěź.")
             return context
@@ -952,7 +952,12 @@ class HraVysledky(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super(HraVysledky, self).get_context_data(**kwargs)
-        context["aktivni_soutez"] = True if Soutez.get_aktivni() else False
+        aktivni_soutez = Soutez.get_aktivni()
+        if aktivni_soutez is not None:
+            context["aktivni_soutez"] = True
+            context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
+        else:
+            context["aktivni_soutez"] = False
         return context
 
 
@@ -1185,7 +1190,12 @@ class TymChatList(LoginRequiredMixin, FormMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["aktivni_soutez"] = True if Soutez.get_aktivni() != None else False
+        aktivni_soutez = Soutez.get_aktivni()
+        if aktivni_soutez is not None:
+            context["aktivni_soutez"] = True
+            context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
+        else:
+            context["aktivni_soutez"] = False
         return context
 
     @transaction.atomic
@@ -1208,7 +1218,12 @@ class TymChat(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         id_konverzace = self.kwargs['pk']
-        context["aktivni_soutez"] = True if Soutez.get_aktivni() != None else False
+        aktivni_soutez = Soutez.get_aktivni()
+        if aktivni_soutez is not None:
+            context["aktivni_soutez"] = True
+            context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
+        else:
+            context["aktivni_soutez"] = False
         self.request.session['id_konverzace'] = id_konverzace
         self.request.session['chat_redirect_target'] = reverse_lazy('tym_chat', args=(id_konverzace,))
         try:

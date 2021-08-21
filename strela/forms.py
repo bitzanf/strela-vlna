@@ -1,8 +1,5 @@
 from django import forms
-from django.utils.safestring import mark_safe
 from .models import Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
-from django.utils.text import slugify
-from datetime import date
 from django.utils.timezone import now
 from bootstrap_datepicker_plus import DateTimePickerInput
 from django.forms import HiddenInput, DecimalField

@@ -1,8 +1,8 @@
-from . models import Tym, Soutez, Skola, Tym_Soutez
+from . models import Soutez
 from django.utils.timezone import now
 from django.contrib import messages
 from django.utils.text import slugify
-import re
+import re, sys
 
 def eval_registration(self):
     context: dict[str, ] = {}
@@ -24,8 +24,6 @@ def eval_registration(self):
 def make_tym_login(jmeno: str) -> str:
     """vytvori login tymu na zaklade jmena a aktualniho roku"""
     return slugify(jmeno).replace("-", "") + str(now().year)
-
-import sys
 
 def ProgressBar(iteration: int, total: int, prefix: str = '', suffix: str = '', decimals: int = 2, barLength: int = 100):
     """
@@ -51,8 +49,6 @@ def tex_escape(text: str):
         :param text: a plain text message
         :return: the message escaped to appear correctly in LaTeX
     """
-
-
     conv = {
         '&': r'\&',
         '%': r'\%',
