@@ -3,9 +3,8 @@ from __future__ import annotations
 from django.db import models, transaction
 from django.core.cache import cache
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
-
 from django.utils.timezone import now
-#import json
+
 import datetime
 import logging
 logger = logging.getLogger(__name__)
@@ -72,7 +71,7 @@ CENIK = {
 }
 
 class Skola(models.Model):
-    nazev = models.CharField(max_length=200)
+    nazev:str = models.CharField(max_length=200)
 
     def __str__(self):
         return self.nazev
@@ -98,18 +97,18 @@ class TymManager(BaseUserManager):
         pass
 
 class Tym(AbstractBaseUser):
-    login = models.CharField(max_length=50, unique=True)
-    jmeno = models.CharField(max_length=200)
-    skola = models.ForeignKey(Skola, on_delete=models.CASCADE, related_name='tymy')
-    email = models.EmailField(max_length = 200)
-    cislo = models.PositiveIntegerField(default=0)
-    soutezici1 = models.CharField(max_length=100)
-    soutezici2 = models.CharField(max_length=100, blank=True)
-    soutezici3 = models.CharField(max_length=100, blank=True)
-    soutezici4 = models.CharField(max_length=100, blank=True)
-    soutezici5 = models.CharField(max_length=100, blank=True)
-    cas_zmeny = models.DateTimeField(auto_now=True)
-    cas_vytvoreni = models.DateTimeField(auto_now_add=True)
+    login:str = models.CharField(max_length=50, unique=True)
+    jmeno:str = models.CharField(max_length=200)
+    skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, related_name='tymy')
+    email:str = models.EmailField(max_length = 200)
+    cislo:int = models.PositiveIntegerField(default=0)
+    soutezici1:str = models.CharField(max_length=100)
+    soutezici2:str = models.CharField(max_length=100, blank=True)
+    soutezici3:str = models.CharField(max_length=100, blank=True)
+    soutezici4:str = models.CharField(max_length=100, blank=True)
+    soutezici5:str = models.CharField(max_length=100, blank=True)
+    cas_zmeny:datetime.datetime = models.DateTimeField(auto_now=True)
+    cas_vytvoreni:datetime.datetime = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name="Tým"
@@ -120,7 +119,8 @@ class Tym(AbstractBaseUser):
     objects = TymManager()
 
     def __str__(self):
-        return "{0} ze {1}".format(self.jmeno, self.skola.nazev)
+        from . utils import vokalizace_z_ze # musí to být tady, jinak to padá na chybě importu
+        return self.jmeno + ' ' + vokalizace_z_ze(self.skola)
 
     def get_queryset(self):
         return Tym.objects.all().order_by("-cislo")
@@ -139,18 +139,19 @@ class Tym(AbstractBaseUser):
         return app_label == "strela"
 
 class Soutez(models.Model):
-    typ = models.CharField(max_length=1, choices = FLAGMF)
-    prezencni = models.CharField(max_length=1, choices = FLAGPREZENCNI)
-    aktivni = models.BooleanField(verbose_name="Soutež probíhá", default=False)
-    limit = models.PositiveIntegerField(verbose_name = "Max. počet týmů",default=30)
-    regod = models.DateTimeField(verbose_name = "Zahájení registrace",default=now)
-    regdo = models.DateTimeField(verbose_name = "Konec registrace",default=now)
-    rok = models.PositiveIntegerField(default=0)
-    zahajena = models.DateTimeField(verbose_name = "Zahájení soutěže",blank = True, null = True)
-    delkam = models.PositiveIntegerField(verbose_name = "Délka soutěže",default=120)
+    typ:str = models.CharField(max_length=1, choices = FLAGMF)
+    prezencni:str = models.CharField(max_length=1, choices = FLAGPREZENCNI)
+    aktivni:bool = models.BooleanField(verbose_name="Soutež probíhá", default=False)
+    limit:int = models.PositiveIntegerField(verbose_name = "Max. počet týmů",default=30)
+    regod:datetime.datetime = models.DateTimeField(verbose_name = "Zahájení registrace",default=now)
+    regdo:datetime.datetime = models.DateTimeField(verbose_name = "Konec registrace",default=now)
+    rok:int = models.PositiveIntegerField(default=0)
+    zahajena:datetime.datetime = models.DateTimeField(verbose_name = "Zahájení soutěže",blank = True, null = True)
+    delkam:int = models.PositiveIntegerField(verbose_name = "Délka soutěže",default=120)
 
     def __str__(self):
-        return "{} {} [{}]".format(self.get_typ_display(), self.rok, self.prezencni) #"Matematika 2020"
+        """`Matematika 2020 [O]`"""
+        return "{} {} [{}]".format(self.get_typ_display(), self.rok, self.prezencni)
 
     def save(self, *args, **kwargs):
         self.rok = self.regdo.strftime("%Y")
@@ -158,19 +159,25 @@ class Soutez(models.Model):
     
     @classmethod
     @transaction.atomic
-    def get_aktivni(cls) -> Soutez | None:
+    def get_aktivni(cls, throw=False):
         try:
-            soutez = Soutez.objects.get(rok=now().year, aktivni=True)
-        except Soutez.DoesNotExist:
+            soutez:Soutez = Soutez.objects.get(rok=now().year, aktivni=True)
+        except Soutez.DoesNotExist as e:
             #logger.warning("Nenalezena aktivní soutěž.")
-            return None
+            if not throw:
+                return None
+            else:
+                raise e
         if now() < (soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)):
             return soutez
         else:
             soutez.aktivni = False 
             logger.info(f"Soutěž {soutez} byla ukončena.")
             soutez.save()
-            return None
+            if not throw:
+                return None
+            else:
+                raise Soutez.DoesNotExist()
 
     @property
     def registrace(self) -> bool:
@@ -194,15 +201,22 @@ class Soutez(models.Model):
         verbose_name="Soutěž"
         verbose_name_plural="Soutěže"
     
-    def pretty_name(self) -> str:
-        """`Pražská střela (Matematika) [Prezenční]`"""
-        return self.nazev + ' (' + self.zamereni + ') [' + self.get_prezencni_display() + ']'
+    def pretty_name(self, add_rok=False) -> str:
+        """
+        `Pražská střela (Matematika) [Prezenční]`
+
+        `Pražská střela (Matematika) [Prezenční] (rok)`
+        """
+        if add_rok:
+            return self.nazev + ' (' + self.zamereni + ') [' + self.get_prezencni_display() + '] (' + str(self.rok) + ')'
+        else:
+            return self.nazev + ' (' + self.zamereni + ') [' + self.get_prezencni_display() + ']'
     
 
 class Tym_Soutez(models.Model):
-    tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy")
-    soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, related_name="souteze")
-    penize = models.PositiveIntegerField(default=40)
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy")
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, related_name="souteze")
+    penize:int = models.PositiveIntegerField(default=40)
 
     def __str__(self):
         return "{0} v soutěži {1} ({2})".format(self.tym.jmeno, self.soutez.get_typ_display(), self.soutez.rok)
@@ -212,15 +226,15 @@ class Tym_Soutez(models.Model):
         verbose_name_plural="Týmy v soutěžích"
 
 class Otazka(models.Model):
-    typ = models.CharField(max_length = 1, choices = FLAGMF)
-    stav = models.PositiveIntegerField(choices = FLAGSTATE)
-    vyhodnoceni = models.PositiveSmallIntegerField(choices = FLAGEVAL)
-    obtiznost = models.CharField(max_length = 1, choices = FLAGDIFF)
-    zadani = models.TextField()
-    reseni = models.CharField(max_length = 250)
+    typ:str = models.CharField(max_length = 1, choices = FLAGMF)
+    stav:int = models.PositiveIntegerField(choices = FLAGSTATE)
+    vyhodnoceni:int = models.PositiveSmallIntegerField(choices = FLAGEVAL)
+    obtiznost:str = models.CharField(max_length = 1, choices = FLAGDIFF)
+    zadani:str = models.TextField()
+    reseni:str = models.CharField(max_length = 250)
 
     def __str__(self):
-        # F-23: schvalena, lehka (auto)
+        """F-23: schválená lehká (automaticky)"""
         return "{0}-{1}: {2} {3} ({4})".format(self.typ, self.id, self.get_stav_display().lower(), self.get_obtiznost_display().lower(), self.get_vyhodnoceni_display().split()[1])
 
     class Meta:
@@ -237,17 +251,17 @@ class Otazka(models.Model):
         ]
 
 class Tym_Soutez_Otazka(models.Model):
-    tym = models.ForeignKey(Tym, on_delete=models.CASCADE, blank=True, null=True)
-    soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
-    otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, related_name='otazky')
-    stav = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
-    odpoved = models.CharField(max_length = 128, blank=True)
-    bazar = models.BooleanField(verbose_name="Zakoupena z bazaru", default=False)
-    cisloVSoutezi = models.IntegerField(verbose_name="Číslo otázky v soutěži", default=0)
-    bylaPodpora = models.BooleanField(verbose_name="Vyskytla se na technické podpoře", default=False)
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, blank=True, null=True)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
+    otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, related_name='otazky')
+    stav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
+    odpoved:str = models.CharField(max_length = 128, blank=True)
+    bazar:bool = models.BooleanField(verbose_name="Zakoupena z bazaru", default=False)
+    cisloVSoutezi:int = models.IntegerField(verbose_name="Číslo otázky v soutěži", default=0)
+    bylaPodpora:bool = models.BooleanField(verbose_name="Vyskytla se na technické podpoře", default=False)
 
     def __str__(self):
-        # F-23 [4] (2020): V bazaru
+        """`F-23 [4] (2020): V bazaru`"""
         return "{0}-{1} [{4}] ({2}): {3}".format(self.otazka.typ, self.otazka.id, self.soutez.rok, self.get_stav_display(), self.cisloVSoutezi)
 
     class Meta:
@@ -255,12 +269,12 @@ class Tym_Soutez_Otazka(models.Model):
         verbose_name_plural="Otázky v soutéžích"
 
 class LogTable(models.Model):
-    tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)
-    otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, null=True)
-    soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, null=True)
-    cas = models.DateTimeField(auto_now=True, db_index=True)
-    staryStav = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
-    novyStav = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)
+    otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, null=True)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, null=True)
+    cas:datetime.datetime = models.DateTimeField(auto_now=True, db_index=True)
+    staryStav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
+    novyStav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
 
     def __str__(self):
         # 31.12.2020 19:54 <tým>: F-23 <staryStav> -> <novyStav>
@@ -271,7 +285,7 @@ class LogTable(models.Model):
         verbose_name_plural="Log akcí"
 
     @property
-    def cisloVSoutezi(self):
+    def cisloVSoutezi(self) -> int:
         cache_key = "cvs_{}-{}".format(self.otazka_id,self.soutez_id) 
         cached = cache.get(cache_key)
         if not cached:
@@ -285,7 +299,7 @@ class LogTable(models.Model):
         else:
             return cached  
     @property
-    def typOtazky(self):
+    def typOtazky(self) -> str:
         cache_key = "to_{}-{}".format(self.otazka_id,self.soutez_id) 
         cached = cache.get(cache_key)
         if not cached:
@@ -301,10 +315,10 @@ class LogTable(models.Model):
 
 
 class EmailInfo(models.Model):
-    odeslal = models.ForeignKey(User, on_delete=models.CASCADE)
-    zprava = models.TextField()
-    kdy = models.DateTimeField(auto_now=True)
-    soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
+    odeslal:User = models.ForeignKey(User, on_delete=models.CASCADE)
+    zprava:str = models.TextField()
+    kdy:datetime.datetime = models.DateTimeField(auto_now=True)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
 
     def __str__(self):
         return "Email id={} odeslal {}".format(self.id, self.odeslal)
@@ -314,11 +328,11 @@ class EmailInfo(models.Model):
         verbose_name_plural="Informační emaily"
 
 class ChatConvos(models.Model):
-    otazka = models.ForeignKey(Tym_Soutez_Otazka, on_delete=models.CASCADE, null=True)
-    tym = models.ForeignKey(Tym, on_delete=models.CASCADE)
-    uzavreno = models.BooleanField(default=False)
-    uznano = models.BooleanField(default=False)
-    sazka = models.PositiveIntegerField(default=0)
+    otazka:Tym_Soutez_Otazka = models.ForeignKey(Tym_Soutez_Otazka, on_delete=models.CASCADE, null=True)
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE)
+    uzavreno:bool = models.BooleanField(default=False)
+    uznano:bool = models.BooleanField(default=False)
+    sazka:int = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name = "Konverzace"
@@ -328,9 +342,9 @@ class ChatConvos(models.Model):
         return "Konverzace týmu '{1}' ohledně otázky '{0}'".format(self.otazka, self.tym)
 
 class ChatMsgs(models.Model):
-    smer = models.BooleanField(verbose_name="směr komunikace (0: tym->podpora; 1: podpora->tym)")   # 0: tym->podpora; 1: podpora->tym
-    text = models.TextField()
-    konverzace = models.ForeignKey(ChatConvos, on_delete=models.CASCADE)
+    smer:bool = models.BooleanField(verbose_name="směr komunikace (0: tym->podpora; 1: podpora->tym)")   # 0: tym->podpora; 1: podpora->tym
+    text:str = models.TextField()
+    konverzace:ChatConvos = models.ForeignKey(ChatConvos, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = "Zpráva chatu"

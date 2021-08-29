@@ -17,9 +17,9 @@
 \begin{longtable}{|c|c|}
 \hline
 {% for o in otazky %}
-\parbox[t]{0.49\textwidth}{\sf\large\textbf{\Ovalbox{ {{- o.2 -}} } M-{{- o.0 -}} }
-\normalsize {{ o.1 }}  \\
-\vfill \center \textbf{Cena {{ o.3 }}\dopplercoin \hfill  Bazar {{ o.5 }}\dopplercoin \hfill Odměna {{ o.4 }}\dopplercoin}\\ \vspace{6pt} }
+\parbox[t]{0.49\textwidth}{\sf\large\textbf{\Ovalbox{ {{- o.obtiznost -}} } {{ o.typ }}-{{- o.cislo -}} }
+\normalsize {{ o.zadani }}  \\
+\vfill \center \textbf{Cena {{ o.cenik.0 }}\dopplercoin \hfill  Bazar {{ o.cenik.2 }}\dopplercoin \hfill Odměna {{ o.cenik.1 }}\dopplercoin}\\ \vspace{6pt} }
 {% if loop.index is divisibleby 2 %} \\ \hline  {% else %} & {% endif %}
 {% endfor %} 
 {% if otazky|length % 2 != 0 %}  \\{% endif %}

@@ -1,4 +1,5 @@
 from django.utils.timezone import now
+from django.utils.text import slugify
 from django.shortcuts import redirect
 from django_tex.shortcuts import render_to_pdf
 from django.views.generic import ListView, TemplateView, CreateView, DetailView
@@ -451,22 +452,25 @@ class AdminPDFZadani(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model=Soutez
 
     def get(self, request, *args, **kwargs):
-        soutez = self.get_object()
+        soutez:Soutez = self.get_object()
         otazky = Tym_Soutez_Otazka.objects.filter(soutez=soutez)
-        pom = []
+        pom:list[dict[str, ]] = []
+        o:Tym_Soutez_Otazka
         for o in otazky:
-            pom.append((o.cisloVSoutezi,
-                        tex_escape(o.otazka.zadani), 
-                        o.otazka.obtiznost,
-                        CENIK[o.otazka.obtiznost][0],
-                        CENIK[o.otazka.obtiznost][1],
-                        CENIK[o.otazka.obtiznost][2]))
+            if o.otazka.stav == 1:
+                pom.append({
+                    'cislo': o.cisloVSoutezi,
+                    'zadani': tex_escape(o.otazka.zadani),
+                    'typ': o.otazka.typ,
+                    'obtiznost': o.otazka.obtiznost,
+                    'cenik': CENIK[o.otazka.obtiznost]
+                })
         # seřadí otázky podle obtížnosti sestupně a v rámci obtížnosti podle délky,
         # aby se k sobě dostaly otázky s podobnou délkou a PDF vypadalo lépe.    
-        pom.sort(key=lambda t: (t[2],len(t[1])), reverse=True)
+        pom.sort(key=lambda t: (t['obtiznost'],len(t['zadani'])), reverse=True)
         context = {'otazky': pom }
         logger.info("Uživatel {} vygeneroval PDF se zadáním pro soutěž {}.".format(self.request.user, soutez))
-        return render_to_pdf(request, self.template_name, context, filename='test.pdf')
+        return render_to_pdf(request, self.template_name, context, filename=slugify(soutez.get_typ_display())+'-'+str(soutez.rok)+'-zadani.pdf')
 
 
 class AdminPDFVysledky(LoginRequiredMixin, PermissionRequiredMixin,DetailView):
@@ -476,15 +480,17 @@ class AdminPDFVysledky(LoginRequiredMixin, PermissionRequiredMixin,DetailView):
     model=Soutez
 
     def get(self, request, *args, **kwargs):
-        soutez = self.get_object()
+        soutez:Soutez = self.get_object()
         otazky = Tym_Soutez_Otazka.objects.filter(soutez=soutez)
-        pom = []
+        pom:list[dict[str, ]] = []
+        o:Tym_Soutez_Otazka
         for o in otazky:
-            pom.append((o.cisloVSoutezi, o.otazka.reseni))
+            if o.otazka.stav == 1:
+                pom.append((o.cisloVSoutezi, tex_escape(o.otazka.reseni)))
         context = {'otazky': pom,
                    'soutez': tex_escape(soutez.zamereni)+" "+str(soutez.rok) }
         logger.info("Uživatel {} vygeneroval PDF s výsledky pro soutěž {}.".format(self.request.user, soutez))           
-        return render_to_pdf(request, self.template_name, context, filename='test.pdf')
+        return render_to_pdf(request, self.template_name, context, filename=slugify(soutez.get_typ_display())+'-'+str(soutez.rok)+'-vysledky.pdf')
 
 
 class RegistraceIndex(CreateView):
@@ -499,7 +505,7 @@ class RegistraceIndex(CreateView):
         return context
 
     def form_valid(self, form):
-        formular = form.save(commit=False)
+        formular:Tym = form.save(commit=False)
         aktualni_rok = now().year
         formular.login = make_tym_login(formular.jmeno)
         password = Tym.objects.make_random_password(length=8, allowed_chars='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789')
@@ -519,7 +525,7 @@ class RegistraceIndex(CreateView):
                         pk = int(m.group('pk'))
                         if s.pk == pk:
                             Tym_Soutez.objects.create(tym=formular, soutez=s)
-                            soutez_txt += s.pretty_name() + ' (' + str(s.rok) + '), '
+                            soutez_txt += s.pretty_name(True) + ', '
         except Exception as e:
             logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
             messages.error(self.request, "Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
@@ -586,7 +592,7 @@ class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin,CreateView):
         return context
 
     def form_valid(self, form):
-        formular = form.save(commit=False)
+        formular:EmailInfo = form.save(commit=False)
         formular.odeslal = self.request.user
         try:
             soutez = Soutez.objects.get(id=self.request.session['soutez-email'])
@@ -812,7 +818,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
 
     @transaction.atomic
     def form_valid(self, form):
-        formular = form.save(commit=False)
+        formular:Tym_Soutez_Otazka = form.save(commit=False)
         if 'b-kontrola' in form.data:
             if self.object.otazka.vyhodnoceni == 0:
                 if eval(form.cleaned_data.get("odpoved")) == eval(self.object.otazka.reseni):
@@ -821,7 +827,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                     formular.stav = 3
                     formular.odpoved = form.cleaned_data.get("odpoved")
                     try:
-                        team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
+                        team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
                         team.penize += CENIK[self.object.otazka.obtiznost][1]
                         logger.info("Tým {} odevzdal otázku {}, kterou zodpověděl SPRÁVNĚ a získal {} DC.".format(self.request.user, formular.otazka, CENIK[self.object.otazka.obtiznost][1]))
                         formular.save()
@@ -1091,7 +1097,7 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
     @transaction.atomic
     def form_valid(self, form):
         try:
-            konverzace = ChatConvos.objects.get(pk=self.request.session['id_konverzace'])
+            konverzace:ChatConvos = ChatConvos.objects.get(pk=self.request.session['id_konverzace'])
         except Exception:
             messages.error(self.request, "Konverzace nebyla nalezena")
             return HttpResponseRedirect(reverse_lazy('admin_index'))
@@ -1099,7 +1105,7 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
         aktivni_soutez = Soutez.get_aktivni()
 
         try:
-            team = Tym_Soutez.objects.get(tym=konverzace.tym, soutez=aktivni_soutez)
+            team:Tym_Soutez = Tym_Soutez.objects.get(tym=konverzace.tym, soutez=aktivni_soutez)
         except Tym_Soutez.DoesNotExist as e:
             logger.error("Nepodařilo se nalézt tým v soutěži {}".format(e))
             messages.error(self.request, "Nepodařilo se nalézt tým v soutěži {}".format(e))
@@ -1202,7 +1208,7 @@ class TymChatList(LoginRequiredMixin, FormMixin, TemplateView):
     def form_valid(self, form):
         if 'b-kontaktovat' in form.data:
             try:
-                konverzace = ChatConvos.objects.get(tym=self.request.user, otazka=None)
+                konverzace:ChatConvos = ChatConvos.objects.get(tym=self.request.user, otazka=None)
                 konverzace.uzavreno = False
                 konverzace.save()
             except ChatConvos.DoesNotExist:
@@ -1227,7 +1233,7 @@ class TymChat(LoginRequiredMixin, TemplateView):
         self.request.session['id_konverzace'] = id_konverzace
         self.request.session['chat_redirect_target'] = reverse_lazy('tym_chat', args=(id_konverzace,))
         try:
-            convo = ChatConvos.objects.get(pk=id_konverzace, tym=self.request.user)
+            convo:ChatConvos = ChatConvos.objects.get(pk=id_konverzace, tym=self.request.user)
             context['sazka_tymu'] = convo.sazka
             context['vyreseno'] = convo.uzavreno
             context['otazka'] = convo.otazka

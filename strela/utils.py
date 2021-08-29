@@ -1,4 +1,5 @@
-from . models import Soutez
+from django.core.cache import cache
+from . models import Soutez, Skola
 from django.utils.timezone import now
 from django.contrib import messages
 from django.utils.text import slugify
@@ -72,3 +73,63 @@ def tex_escape(text: str):
     })
     regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key = lambda item: - len(item))))
     return regex.sub(lambda match: conv[match.group()], text)
+
+def vokalizace_z_ze(skola: Skola) -> str:
+    """
+    vytvoří správně skloněný název školy s předložkou z/ze
+    viz https://prirucka.ujc.cas.cz/?id=770
+    """
+
+    cache_key = f'sk_zze_{skola.pk}'
+    obj = cache.get(cache_key)
+    if obj:
+        return obj
+    
+    souhlasky = 'hkrdtnzscrj'   # h ch k r d t n ž š č ř ď ť ň
+    samohlasky = 'aeiyou'
+    skola_split = slugify(skola.nazev).split('-')
+    slovo = skola_split[0]
+    z_ze = 'z'
+
+    if len(slovo) < 2:
+        z_ze = 'z'
+    elif slovo[0] in samohlasky:
+        z_ze = 'z'
+    elif slovo[0] in 'zs':
+        z_ze = 'ze'
+    elif slovo[0] in souhlasky and slovo[1] in samohlasky:
+        z_ze = 'z'
+    elif slovo[0] in souhlasky and slovo[1] in souhlasky:
+        if skola.nazev[:2] in ('tř', 'dř', 'sl', 'zr', 'zl'):
+            z_ze = 'ze'
+        else:
+            z_ze = 'z'
+    elif slovo[0] in souhlasky and slovo[1] in souhlasky and slovo[2] in souhlasky:
+        z_ze = 'ze'
+    
+    skola_out:list[str] = []
+    skola_words = skola.nazev.split()
+    for i in range(len(skola_words)):
+        ii = skola_words[i]
+        iis = slugify(ii)
+        if iis == 'skola':
+            if ii[0].islower():
+                skola_out.append('školy')
+            else:
+                skola_out.append('Školy')
+        elif iis == 'gymnazium':
+            for j in range(i - 1, -1, -1):
+                if skola_out[j].endswith(('ní', 'ni')):
+                    skola_out[j] += 'ho'
+                else:
+                    break
+            if ii[0].islower():
+                skola_out.append('gymnázia')
+            else:
+                skola_out.append('Gymnázia')
+        else:
+            skola_out.append(ii)
+
+    out = z_ze + ' ' + ' '.join(skola_out)
+    cache.set(cache_key, out)
+    return out
