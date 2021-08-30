@@ -100,7 +100,7 @@ def vokalizace_z_ze(skola: Skola) -> str:
     elif slovo[0] in souhlasky and slovo[1] in samohlasky:
         z_ze = 'z'
     elif slovo[0] in souhlasky and slovo[1] in souhlasky:
-        if skola.nazev[:2] in ('tř', 'dř', 'sl', 'zr', 'zl'):
+        if skola.nazev[:2].lower() in ('tř', 'dř', 'sl', 'zr', 'zl'):
             z_ze = 'ze'
         else:
             z_ze = 'z'
