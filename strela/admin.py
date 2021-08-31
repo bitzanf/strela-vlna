@@ -2,26 +2,23 @@ from django.contrib import admin
 from django import forms
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
-from django.utils.text import slugify
-from datetime import date
 from django.utils.timezone import now
 from sequences import get_next_value
 
-from .models import EmailInfo, Skola, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, TymManager, ChatMsgs, ChatConvos
+from . models import EmailInfo, Skola, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, ChatMsgs, ChatConvos
+from . utils import make_tym_login
 
 class TymCreationForm(forms.ModelForm):
     password = forms.CharField(label='Password', widget=forms.PasswordInput)
 
     class Meta:
         model = Tym
-        fields = ['jmeno','skola','email','cislo','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
+        fields = ['jmeno','skola','email','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
 
     def save(self, commit=True):
         if self.is_valid():
             user = super().save(commit=False)
-            aktualni_rok = date.today().strftime("%Y")
-            user.cislo=get_next_value(aktualni_rok)
-            user.login=slugify(self.cleaned_data["jmeno"]).replace("-", "")+aktualni_rok
+            user.login=make_tym_login(self.cleaned_data["jmeno"])
             user.set_password(self.cleaned_data["password"])
             if commit:
                 user.save()
@@ -30,7 +27,7 @@ class TymCreationForm(forms.ModelForm):
     def clean_jmeno(self):
         jmeno = self.cleaned_data["jmeno"]
         # kontrola na unikátnost jména
-        login = slugify(jmeno)+date.today().strftime("%Y").replace("-", "")
+        login = make_tym_login(jmeno)
         if Tym.objects.filter(login=login).count() > 0:
            raise forms.ValidationError('Login týmu není jedinečný, musíte zvolit jiné jméno týmu.')
         return jmeno
@@ -42,7 +39,6 @@ class TymChangeForm(forms.ModelForm):
     class Meta:
         model = Tym
         fields = ['jmeno','skola','email','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
-        readonly_fields = ['cislo']
 
     def __init__(self, *args, **kwargs):
         super(TymChangeForm, self).__init__(*args, **kwargs)
@@ -50,9 +46,8 @@ class TymChangeForm(forms.ModelForm):
 
     def save(self, commit=True):
         if self.is_valid():
-            aktualni_rok = date.today().strftime("%Y")
             user = super().save(commit=False)
-            user.login=slugify(self.cleaned_data["jmeno"]).replace("-", "")+aktualni_rok
+            user.login=make_tym_login(self.cleaned_data["jmeno"])
             if commit:
                 user.save()
             return user
@@ -60,7 +55,7 @@ class TymChangeForm(forms.ModelForm):
     def clean_jmeno(self):
         jmeno = self.cleaned_data["jmeno"]
         # kontrola na unikátnost jména
-        login = slugify(jmeno)+date.today().strftime("%Y").replace("-", "")
+        login = make_tym_login(jmeno)
         if Tym.objects.filter(login=login).count() > 0:
            raise forms.ValidationError('Login týmu není jedinečný, musíte zvolit jiné jméno týmu.')
         return jmeno
@@ -69,7 +64,7 @@ class TymAdmin(UserAdmin):
     form = TymChangeForm
     add_form = TymCreationForm
 
-    list_display = ['login', 'jmeno','cislo', 'skola', 'cas_vytvoreni' ]
+    list_display = ['login', 'jmeno', 'skola', 'cas_vytvoreni' ]
     list_filter = ['login','jmeno']
     fieldsets = (
         (None, {'fields': ['login','jmeno','skola','password','email', ]}),
@@ -84,8 +79,36 @@ class TymAdmin(UserAdmin):
     ordering = ['-cas_vytvoreni','login',]
     filter_horizontal = []
 
+class TymSoutezCreateForm(forms.ModelForm):
+    
+    class Meta:
+        model = Tym_Soutez
+        fields = ['tym', 'soutez', 'penize', 'cislo']
+        readonly_fields = ['cislo']
+
+    def save(self, commit=True):
+        if self.is_valid():
+            ts:Tym_Soutez = super().save(commit=False)
+            ts.cislo = get_next_value(f'ts_{ts.soutez.pk}')
+            if commit:
+                ts.save()
+            return ts
+
+class TymSoutezChangeForm(forms.ModelForm):
+    
+    class Meta:
+        model = Tym_Soutez
+        fields = ['tym', 'soutez', 'penize', 'cislo']
+        readonly_fields = ['cislo']
+
+
 class TymSoutezAdmin(admin.ModelAdmin):
-    list_display = ('tym', 'soutez', 'penize')
+    form = TymSoutezCreateForm
+    add_form = TymSoutezChangeForm
+    list_display = ('tym', 'soutez', 'penize', 'cislo')
+    fields = list_display
+    readonly_fields = ('cislo',)
+    search_fields = ('tym__jmeno', 'tym__skola__nazev', 'cislo')
 
 class SoutezCreationForm(forms.ModelForm):
 

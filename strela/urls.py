@@ -11,6 +11,7 @@ urlpatterns = [
     path("vysledky/", views.SoutezVysledky.as_view(), name="vysledky"),
     path('vysledek/<int:pk>', views.SoutezVysledkyDetail.as_view(), name='vysledek-detail'),
     path('potvrzeni/<str:skey>', views.RegistracePotvrzeni.as_view(), name='registrace-potvrzeni'),
+    path('hodiny', views.Clock.as_view(), name='hodiny'),
 
 # herní část - modrý podklad
     path("hra/", views.HraIndex.as_view(), name="herni_server"),

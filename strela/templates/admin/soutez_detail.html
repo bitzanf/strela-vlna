@@ -118,7 +118,7 @@
               <div class="card-header" id="headingOne">
                 <h5 class="mb-0">
                   <button class="btn btn-link collapsed" data-toggle="collapse" data-target="#collapse{{ forloop.counter }}" aria-expanded="true" aria-controls="collapse{{ forloop.counter }}">
-                    {{ t.cislo }}<span class="ml-3">{{ t }}</span>
+                    {{ t.cislo }}<span class="ml-3">{{ t.tym }}</span>
                   </button>
                 </h5>
               </div>
@@ -127,17 +127,17 @@
                 <div class="card-body">
                     <table class="table table-hover mt-1 table-sm table-responsive">
                     <tbody>    
-                        <tr><td>Jméno týmu: </td><td>{{ t.jmeno }}</td></tr>
-                        <tr><td>Přihlašovací jméno: </td><td>{{ t.login }}</td></tr>
-                        <tr><td>Škola: </td><td>{{ t.skola }}</td></tr>
-                        <tr><td>Registrační email: </td><td>{{ t.email }}</td></tr>
-                        <tr><td>Číslo v soutěži: </td><td>{{ t.cislo }}</td></tr>
-                        <tr><td>Datum registrace: </td><td>{{ t.cas_vytvoreni }}</td></tr>
-                        <tr><td>Soutěžící 1 </td><td>{{ t.soutezici1 }}</td></tr>
-                        <tr><td>Soutěžící 2 </td><td>{{ t.soutezici2|default:"---" }}</td></tr>   
-                        <tr><td>Soutěžící 3 </td><td>{{ t.soutezici3|default:"---" }}</td></tr>
-                        <tr><td>Soutěžící 4 </td><td>{{ t.soutezici4|default:"---" }}</td></tr>
-                        <tr><td>Soutěžící 5 </td><td>{{ t.soutezici5|default:"---" }}</td></tr>
+                        <tr><td>Jméno týmu: </td><td>{{ t.tym.jmeno }}</td></tr>
+                        <tr><td>Přihlašovací jméno: </td><td>{{ t.tym.login }}</td></tr>
+                        <tr><td>Škola: </td><td>{{ t.tym.skola }}</td></tr>
+                        <tr><td>Registrační email: </td><td>{{ t.tym.email }}</td></tr>
+                        <tr><td>Číslo v soutěži: </td><td>{{ t.tym.cislo }}</td></tr>
+                        <tr><td>Datum registrace: </td><td>{{ t.tym.cas_vytvoreni }}</td></tr>
+                        <tr><td>Soutěžící 1 </td><td>{{ t.tym.soutezici1 }}</td></tr>
+                        <tr><td>Soutěžící 2 </td><td>{{ t.tym.soutezici2|default:"---" }}</td></tr>   
+                        <tr><td>Soutěžící 3 </td><td>{{ t.tym.soutezici3|default:"---" }}</td></tr>
+                        <tr><td>Soutěžící 4 </td><td>{{ t.tym.soutezici4|default:"---" }}</td></tr>
+                        <tr><td>Soutěžící 5 </td><td>{{ t.tym.soutezici5|default:"---" }}</td></tr>
                     </tbody>
                     </table>        
                 </div>

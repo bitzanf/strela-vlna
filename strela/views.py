@@ -328,7 +328,8 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context["prihlaseno"]=Tym_Soutez.objects.filter(soutez=self.object).count()
         context['form'] = self.get_form
         context['akt_rok'] = now().year
-        context['tymy'] = Tym.objects.filter(id__in = Tym_Soutez.objects.filter(soutez=self.object).values_list('tym__id', flat=True))
+        #context['tymy'] = Tym.objects.filter(id__in = Tym_Soutez.objects.filter(soutez=self.object).values_list('tym__id', flat=True))
+        context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object)
         return context
 
     def post(self, request, *args, **kwargs):
@@ -510,7 +511,6 @@ class RegistraceIndex(CreateView):
         formular.login = make_tym_login(formular.jmeno)
         password = Tym.objects.make_random_password(length=8, allowed_chars='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789')
         formular.set_password(password)
-        formular.cislo = get_next_value(aktualni_rok)
         # zpracujeme seznam soutezi na ktere se prihlasili
         formular.save()
 
@@ -524,7 +524,7 @@ class RegistraceIndex(CreateView):
                     if m is not None:
                         pk = int(m.group('pk'))
                         if s.pk == pk:
-                            Tym_Soutez.objects.create(tym=formular, soutez=s)
+                            Tym_Soutez.objects.create(tym=formular, soutez=s, cislo=get_next_value(f'ts_{s.pk}'))
                             soutez_txt += s.pretty_name(True) + ', '
         except Exception as e:
             logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
@@ -1242,3 +1242,7 @@ class TymChat(LoginRequiredMixin, TemplateView):
             logger.error("Konverzace s id {} u týmu {} nenalezena".format(id_konverzace, self.request.user))
             messages.error(self.request, "Chyba: {}".format(e))
         return context
+
+
+class Clock(TemplateView):
+    template_name = 'strela/hodiny.html'

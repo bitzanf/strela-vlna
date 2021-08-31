@@ -77,3 +77,8 @@ footer a {
 .chat_odchozi {
     background-color: #fbf092;
 }
+
+.required ::after {
+    content: " *";
+    color: red;
+}

@@ -10,6 +10,7 @@ from . utils import make_tym_login
 import re
 
 class RegistraceForm(forms.ModelForm):
+    required_css_class = 'required'
 
     class Meta:
         model = Tym
@@ -22,17 +23,8 @@ class RegistraceForm(forms.ModelForm):
 
     def clean(self):
         super().clean()
+        
         # tým musí zaškrtnout alespoň jednu soutěž
-
-        #souteze = Soutez.objects.filter(rok=now().year)
-        #has_soutez = False
-        #for s in souteze:
-        #    if self.cleaned_data.get("soutez"+s.typ) :
-        #        has_soutez = True
-        #        break
-        #if not has_soutez:
-        #    raise forms.ValidationError('Musíte zvolit alespoň jednu soutěž')
-
         has_soutez = False
         valid_soutez = False
         rx = re.compile('soutez(?P<pk>\d+)')

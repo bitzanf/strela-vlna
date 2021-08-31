@@ -101,7 +101,6 @@ class Tym(AbstractBaseUser):
     jmeno:str = models.CharField(max_length=200)
     skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, related_name='tymy')
     email:str = models.EmailField(max_length = 200)
-    cislo:int = models.PositiveIntegerField(default=0)
     soutezici1:str = models.CharField(max_length=100)
     soutezici2:str = models.CharField(max_length=100, blank=True)
     soutezici3:str = models.CharField(max_length=100, blank=True)
@@ -217,6 +216,7 @@ class Tym_Soutez(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy")
     soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, related_name="souteze")
     penize:int = models.PositiveIntegerField(default=40)
+    cislo:int = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return "{0} v soutěži {1} ({2})".format(self.tym.jmeno, self.soutez.get_typ_display(), self.soutez.rok)
