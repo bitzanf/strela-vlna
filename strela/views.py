@@ -19,7 +19,7 @@ from django.utils.crypto import get_random_string
 from sequences import get_next_value
 
 from . models import Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
-from . utils import eval_registration, tex_escape, make_tym_login
+from . utils import eval_registration, tex_escape, make_tym_login, auto_kontrola_odpovedi
 from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
 from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ
 
@@ -73,15 +73,16 @@ class NovaOtazka(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
 
     @transaction.atomic
     def form_valid(self, form):
-        formular = form.save(commit=False)
+        formular:Otazka = form.save(commit=False)
         formular.stav = 0
         formular.save()
         if 'b-ulozit' in form.data:
             logger.info("Uživatel {1} uložil otázku {0}.".format(formular,self.request.user))
+            messages.success(self.request, f'Otázka {formular} byla vytvořena')
             return super().form_valid(form)
         if 'b-nahled' in form.data:
             logger.info("Uživatel {1} uložil otázku {0} s náhledem.".format(formular,self.request.user))
-            messages.success(self.request, "Nová otázka byla uložena.")
+            messages.success(self.request, f'Otázka {formular} byla vytvořena')
             return HttpResponseRedirect(reverse_lazy('admin-otazka-detail', args = (formular.id,)))
 
 
@@ -515,7 +516,7 @@ class RegistraceIndex(CreateView):
         formular.save()
 
         souteze = Soutez.objects.filter(rok=aktualni_rok)
-        soutez_txt = ""
+        soutez_list = []
         rx = re.compile('soutez(?P<pk>\d+)')
         try:
             for s in souteze:
@@ -525,7 +526,7 @@ class RegistraceIndex(CreateView):
                         pk = int(m.group('pk'))
                         if s.pk == pk:
                             Tym_Soutez.objects.create(tym=formular, soutez=s, cislo=get_next_value(f'ts_{s.pk}'))
-                            soutez_txt += s.pretty_name(True) + ', '
+                            soutez_list.append(s.pretty_name(True))
         except Exception as e:
             logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
             messages.error(self.request, "Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
@@ -537,7 +538,9 @@ class RegistraceIndex(CreateView):
             'prijemce': formular.email,
             'heslo': password,
             'login': formular.login,
-            'souteze': soutez_txt[:-2]  #umazat poslední mezeru a čárku
+            'souteze': soutez_list,
+            'tym': formular.jmeno,
+            'skola': formular.skola.nazev
         }
         # finta - abychom nepřenášeli login a heslo mimo server mezi View,
         # vygenerujeme si náhodný klíč a pod tímto klíčem uložíme údaje do session
@@ -821,7 +824,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
         formular:Tym_Soutez_Otazka = form.save(commit=False)
         if 'b-kontrola' in form.data:
             if self.object.otazka.vyhodnoceni == 0:
-                if eval(form.cleaned_data.get("odpoved")) == eval(self.object.otazka.reseni):
+                if auto_kontrola_odpovedi(form.cleaned_data.get("odpoved"), self.object.otazka.reseni):
                     LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=3)
                     messages.info(self.request, "Otázka byla vyřešena")
                     formular.stav = 3
@@ -1246,3 +1249,8 @@ class TymChat(LoginRequiredMixin, TemplateView):
 
 class Clock(TemplateView):
     template_name = 'strela/hodiny.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['soutez'] = Soutez.get_aktivni()
+        return context

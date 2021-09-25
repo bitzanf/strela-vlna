@@ -6,17 +6,24 @@
 {% load bootstrap4 %}
 
 {% if souteze %}
-    <H3> Děkujeme za Vaši registraci </H3>
-    do soutěží <b> {{ souteze }}</b>.<br>
-    Na Vaši adresu <b> {{ prijemce }} </b> Vám byl odeslán email s potvrzením registrace a vygenerovanými přihlašovacími údaji.<br>
-    <br>
-    Bylo vám vygenerováno <br>
-    přihlašovací jméno: <b>{{ login }}</b> <br>
-    heslo: <b>{{ heslo }}</b> <br>
+    <h2> Děkujeme za Vaši registraci </h2>
+    do soutěž{% if souteze|length > 1 %}í{% else %}e{% endif %}<br><br>
+    <font size="+0.5">
+        {% for s in souteze %}
+            <b>{{ s }}</b><br>
+        {% endfor %}
+    </font>
+    za tým <font size="+1">{{ tym }}</font><br>
+    ze školy <font size="+1">{{ skola }}</font><br><br>
+
+    Na Vaši adresu <b> {{ prijemce }} </b> Vám byl odeslán email s potvrzením registrace a vygenerovanými přihlašovacími údaji.<br><br>
+    <h4>Údaje k přihlášení do online systému:</h4>
+    přihlašovací jméno: <b>{{ login }}</b><br>
+    heslo: <b>{{ heslo }}</b><br><br>
     Toto heslo pečlivě uschovejte, budete ho potřebovat pro přihlášení do soutěží.<br>
     <br>
     S pozdravem <br>
-    organizační tým GCHD<br>
+    <i>organizační tým Střely a Vlny</i>
 {% else %}
     <H3> Odkaz na výsledek registrace není platný. </H3>
 {% endif %}
