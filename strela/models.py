@@ -170,6 +170,7 @@ class Soutez(models.Model):
         if now() < (soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)):
             return soutez
         else:
+            Tym_Soutez_Otazka.sellall(soutez)
             soutez.aktivni = False 
             logger.info(f"Soutěž {soutez} byla ukončena.")
             soutez.save()
@@ -267,6 +268,77 @@ class Tym_Soutez_Otazka(models.Model):
     class Meta:
         verbose_name="Otázka v soutěži"
         verbose_name_plural="Otázky v soutéžích"
+
+    @classmethod
+    @transaction.atomic
+    def buy(cls, tym:Tym, soutez:Soutez, obtiznost:str) -> Tym_Soutez_Otazka:
+        tym_soutez:Tym_Soutez = Tym_Soutez.objects.get(tym=tym, soutez=soutez)
+        konec = soutez.zahajena + datetime.timedelta(minutes=soutez.delkam)
+
+        if konec - now() < datetime.timedelta(minutes=15):
+            raise Exception('Obchod se na posledních 15 minut soutěže zavírá')
+        
+        if tym_soutez.penize >= CENIK[obtiznost][0]:
+            otazky = Tym_Soutez_Otazka.objects.filter(stav=0, soutez=soutez, otazka__obtiznost=obtiznost).order_by("?")[:1]
+            if len(otazky) == 0:
+                logger.error("Tým {} se pokusil koupit otázku s obtížností {}, které došly.".format(tym, obtiznost))
+                raise Exception("došly otázky s obtížností {} :/".format(obtiznost))
+            otazka:Tym_Soutez_Otazka = otazky[0]
+            otazka.stav = 1
+            tym_soutez.penize -= CENIK[obtiznost][0]
+            otazka.tym=tym
+            LogTable.objects.create(tym=tym, otazka=otazka.otazka, soutez=soutez, staryStav=0, novyStav=1)
+            logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(tym, otazka, obtiznost, CENIK[obtiznost][0]))
+            otazka.save()
+            tym_soutez.save()
+            return otazka
+        else: raise Exception("nedostatek prostředků pro nákup otázky".format(obtiznost))
+
+    @classmethod
+    @transaction.atomic
+    def buy_bazar(cls, tym:Tym, soutez:Soutez, obtiznost:str) -> Tym_Soutez_Otazka:
+        tym_soutez:Tym_Soutez = Tym_Soutez.objects.get(tym=tym, soutez=soutez)
+
+        if tym_soutez.penize >= CENIK[obtiznost][2]:
+            otazky = Tym_Soutez_Otazka.objects.filter(stav=5, soutez=soutez, otazka__obtiznost=obtiznost).order_by("?")[:1]
+            if len(otazky) == 0:
+                logger.error("Tým {} se pokusil koupit otázku s obtížností {} Z BAZARU, které došly.".format(tym, obtiznost))
+                raise Exception("došly otázky s obtiznosti {} v bazaru :/".format(obtiznost))
+            otazka:Tym_Soutez_Otazka = otazky[0]
+            otazka.stav = 6
+            tym_soutez.penize -= CENIK[obtiznost][2]
+            otazka.tym=tym
+            LogTable.objects.create(tym=tym, otazka=otazka.otazka, soutez=soutez, staryStav=5, novyStav=6)
+            logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(tym, otazka, obtiznost, CENIK[obtiznost][0]))
+            otazka.save()
+            tym_soutez.save()
+            return otazka
+        else: raise Exception("nedostatek prostředků pro nákup otázky z bazaru".format(obtiznost))
+
+    @transaction.atomic
+    def sell(self):
+        if self.bazar: return
+        LogTable.objects.create(tym=self.tym, otazka=self.otazka, soutez=self.soutez, staryStav=self.stav, novyStav=5)
+        
+        team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.tym, soutez=self.soutez)
+        self.tym = None
+        if self.otazka.obtiznost != "A":
+            self.bazar = True
+        self.stav = 5
+        self.odpoved = ""
+        team.penize += CENIK[self.otazka.obtiznost][2]
+        logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(team.tym, self.otazka, CENIK[self.otazka.obtiznost][1]))
+        self.save()
+        team.save()
+
+    @classmethod
+    def sellall(cls, soutez:Soutez):
+        logger.info(f'Automatické prodávání otázek v soutěži {soutez}')
+        otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 4, 6, 7], soutez=soutez)
+        for o in otazky:
+            o.sell()
+    
+    
 
 class LogTable(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)

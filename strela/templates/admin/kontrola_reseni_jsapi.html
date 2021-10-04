@@ -1,27 +1,34 @@
 {% if is_aktivni_soutez %}
-<table class="table table-hover">
-    <thead>
-        <tr>
-            <th scope="col">Otázka</th>
-            <th scope="col">Tým</th>
-            <th scope="col">Obtížnost</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for o in object_list %}
-            <tr class="clickable-row" data-href="{% url 'kontola_odpovedi_detail' o.pk %}" style="cursor: pointer;">
-                <td>{{ o.otazka.typ }}-{{ o.cisloVSoutezi }} [{{ o.otazka.pk }}]</td>   
-                <td>{{ o.tym }} </td> 
-                <td>{{o.otazka.obtiznost}} - {{ o.otazka.get_obtiznost_display.lower }} </td>   
-            </tr>
-                {% empty %}
-                    <tr><td colspan=3 class="text-center">Žádné otázky k zobrazení</td></tr>
-                {% endfor %}
-    </tbody>
-</table>
+    {% if soutez_valid %}
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">Otázka</th>
+                    <th scope="col">Tým</th>
+                    <th scope="col">Obtížnost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in object_list %}
+                    <tr class="clickable-row" data-href="{% url 'kontola_odpovedi_detail' o.pk %}" style="cursor: pointer;">
+                        <td>{{ o.otazka.typ }}-{{ o.cisloVSoutezi }} [{{ o.otazka.pk }}]</td>   
+                        <td>{{ o.tym }} </td> 
+                        <td>{{o.otazka.obtiznost}} - {{ o.otazka.get_obtiznost_display.lower }} </td>   
+                    </tr>
+                        {% empty %}
+                            <tr><td colspan=3 class="text-center">Žádné otázky k zobrazení</td></tr>
+                        {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Tato soutěž je prezenční</h4>
+            <p>V prezenční formě soutěže není možné nic řídit pomocí online systému</p>
+        </div>
+    {% endif %}
 {% else %}
-<div class="alert alert-danger" role="alert">
-    <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
-    <p>Nelze zobrazit otázky ke kontrole, jelikož neběží žádná soutěž</p>
-</div>
+    <div class="alert alert-danger" role="alert">
+        <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
+        <p>Nelze zobrazit otázky ke kontrole, jelikož neběží žádná soutěž</p>
+    </div>
 {% endif %}

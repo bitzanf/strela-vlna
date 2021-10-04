@@ -39,6 +39,7 @@ class AdministraceIndex(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
     def get_context_data(self, **kwargs):
         context = super(AdministraceIndex, self).get_context_data(**kwargs)
         context["aktivni_soutez"] = Soutez.get_aktivni()
+        if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
         context["n_otazek_celkem"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).count()
         stavy = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).values('stav').annotate(total=Count('stav'))
         s = [0, 0, 0, 0, 0, 0, 0, 0]
@@ -199,7 +200,12 @@ class KontrolaOdpovediIndex(LoginRequiredMixin, PermissionRequiredMixin, Templat
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["is_aktivni_soutez"] = True if Soutez.get_aktivni() != None else False
+        soutez = Soutez.get_aktivni()
+        if soutez is not None:
+            context["is_aktivni_soutez"] = True
+            context["soutez_valid"] = True if soutez.prezencni == 'O' else False
+        else:
+            context["is_aktivni_soutez"] = False
         return context
     
 
@@ -263,7 +269,12 @@ class KontrolaOdpovediJsAPI(PermissionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["is_aktivni_soutez"] = True if Soutez.get_aktivni() != None else False
+        soutez = Soutez.get_aktivni()
+        if soutez is not None:
+            context["is_aktivni_soutez"] = True
+            context["soutez_valid"] = True if soutez.prezencni == 'O' else False
+        else:
+            context["is_aktivni_soutez"] = False
         return context
     
     def get_queryset(self):
@@ -734,10 +745,13 @@ class HraIndexJsAPI(TemplateView):
             konec = context["aktivni_soutez"].zahajena + datetime.timedelta(minutes = context["aktivni_soutez"].delkam)
             if konec - now() < datetime.timedelta(minutes=5):
                 context["color"] = "danger"
+                context['shop_open'] = False
             elif konec - now() < datetime.timedelta(minutes=15):
                 context["color"] = "warning"
+                context['shop_open'] = False
             else:
                 context["color"] = "secondary"
+                context['shop_open'] = True
             context["konec"] = konec.strftime('%H:%M')
         return context
 
@@ -853,18 +867,8 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                 logger.info("Tým {} odevzdal otázku {} k ruční kontrole".format(self.request.user, formular.otazka))
                 formular.save()
         elif 'b-bazar' in form.data:
-            LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=5)
+            formular.sell()
             messages.info(self.request, "Otázka byla prodána do bazaru")
-            team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
-            formular.tym = None
-            if formular.otazka.obtiznost != "A":
-                formular.bazar = True
-            formular.stav = 5
-            formular.odpoved = ""
-            team.penize += CENIK[self.object.otazka.obtiznost][2]
-            logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(self.request.user, formular.otazka, CENIK[self.object.otazka.obtiznost][1]))
-            formular.save()
-            team.save()
         elif 'b-podpora' in form.data:
             LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=4)
             formular.odpoved = form.cleaned_data.get("odpoved")
@@ -905,37 +909,17 @@ class KoupitOtazku(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         is_bazar = self.kwargs["bazar"]
         obtiznost = self.kwargs["obtiznost"]
-        tym_soutez = Tym_Soutez.objects.get(tym=request.user, soutez=Soutez.get_aktivni())
-        
-        if (tym_soutez.penize >= CENIK[obtiznost][0]) and not is_bazar:
-            otazky = Tym_Soutez_Otazka.objects.filter(stav=0, soutez=Soutez.get_aktivni(), otazka__obtiznost=obtiznost).order_by("?")[:1]
-            if len(otazky) == 0:
-                messages.error(request, "došly otázky s obtížností {} :/".format(obtiznost))
-                logger.error("Tým {} se pokusil koupit otázku s obtížností {}, které došly.".format(request.user, obtiznost))
-                return redirect("herni_server")
-            otazka = otazky[0]
-            otazka.stav = 1
-            tym_soutez.penize -= CENIK[obtiznost][0]
-            otazka.tym=request.user
-            LogTable.objects.create(tym=request.user, otazka=otazka.otazka, soutez=tym_soutez.soutez, staryStav=0, novyStav=1)
-            logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(request.user, otazka, obtiznost, CENIK[obtiznost][0]))
-            otazka.save()
-            tym_soutez.save()
-        elif (tym_soutez.penize >= CENIK[obtiznost][2]) and is_bazar:
-            otazky = Tym_Soutez_Otazka.objects.filter(stav=5, soutez=Soutez.get_aktivni(), otazka__obtiznost=obtiznost).order_by("?")[:1]
-            if len(otazky) == 0:
-                messages.error(request, "došly otázky s obtiznosti {} v bazaru :/".format(obtiznost))
-                logger.error("Tým {} se pokusil koupit otázku s obtížností {} Z BAZARU, které došly.".format(request.user, obtiznost))
-                return redirect("herni_server")
-            otazka = otazky[0]
-            otazka.stav = 6
-            tym_soutez.penize -= CENIK[obtiznost][2]
-            otazka.tym=request.user
-            LogTable.objects.create(tym=request.user, otazka=otazka.otazka, soutez=tym_soutez.soutez, staryStav=5, novyStav=6)
-            logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(request.user, otazka, obtiznost, CENIK[obtiznost][0]))
-            otazka.save()
-            tym_soutez.save()
-        return redirect("otazka-detail", otazka.pk)
+        soutez = Soutez.get_aktivni()
+
+        try:
+            if is_bazar:
+                otazka = Tym_Soutez_Otazka.buy_bazar(request.user, soutez, obtiznost)
+            else:
+                otazka = Tym_Soutez_Otazka.buy(request.user, soutez, obtiznost)
+            return redirect("otazka-detail", otazka.pk)
+        except Exception as e:
+            messages.error(request, e)
+            return redirect("herni_server")
 
 
 class SoutezVysledkyJsAPI(TemplateView):
@@ -1094,7 +1078,12 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["is_aktivni_soutez"] = True if Soutez.get_aktivni() != None else False
+        soutez = Soutez.get_aktivni()
+        if soutez is not None:
+            context["is_aktivni_soutez"] = True
+            context["soutez_valid"] = True if soutez.prezencni == 'O' else False
+        else:
+            context["is_aktivni_soutez"] = False
         return context
 
     @transaction.atomic

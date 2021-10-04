@@ -2,7 +2,8 @@
 {% block title %}Technická podpora{% endblock %}
 
 {% block extrajs %}
-{% if is_aktivni_soutez == True %}
+{% if is_aktivni_soutez %}
+{% if soutez_valid %}
 <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.css"/>
 <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.23/css/dataTables.bootstrap4.min.css"/>
 <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
@@ -39,13 +40,21 @@
     });
 </script>
 {% endif %}
+{% endif %}
 {% endblock %}
 
 {% block content %}
-{% if is_aktivni_soutez == True %}
-<div class="row">
-    <div class="w-100" id="innerdata"></div>
-</div>
+{% if is_aktivni_soutez %}
+    {% if soutez_valid %}
+        <div class="row">
+            <div class="w-100" id="innerdata"></div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Tato soutěž je prezenční</h4>
+            <p>V prezenční formě soutěže není možné nic řídit pomocí online systému</p>
+        </div>
+    {% endif %}
 {% else %}
 <div class="alert alert-danger" role="alert">
     <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>

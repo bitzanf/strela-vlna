@@ -135,7 +135,7 @@ def vokalizace_z_ze(skola: Skola) -> str:
     return out
 
 def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool:
-    rx = re.compile('^[\\d\\+\\-\\*/,.]+$')
+    rx = re.compile('^[\\d\\+\\-\\*/,.\\(\\)]+$')
     if rx.match(odpoved) and rx.match(reseni):
         try:
             return abs(1 - (eval(odpoved.replace(',', '.')) / eval(reseni.replace(',', '.')))) < odchylka
