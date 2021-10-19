@@ -5,13 +5,26 @@ do soutěž{% if souteze|length > 1 %}í{% else %}e{% endif %}<br><br>
         <b>{{ s }}</b><br>
     {% endfor %}
 </font>
-za tým <font size="+1">{{ tym }}</font><br>
-ze školy <font size="+1">{{ skola }}</font>
+za tým <font size="+1">{{ tym.jmeno }}</font><br>
+ze školy <font size="+1">{{ skola }}</font><br><br>
+
+Jméno 1. soutěžícího: {{ tym.soutezici1|default:'-' }}<br>
+Jméno 2. soutěžícího: {{ tym.soutezici2|default:'-' }}<br>
+Jméno 3. soutěžícího: {{ tym.soutezici3|default:'-' }}<br>
+Jméno 4. soutěžícího: {{ tym.soutezici4|default:'-' }}<br>
+Jméno 5. soutěžícího: {{ tym.soutezici5|default:'-' }}<br><br>
 
 <h3>Údaje k přihlášení do online systému:</h3>
 přihlašovací jméno: <b>{{ login }}</b><br>
 heslo: <b>{{ heslo }}</b><br><br>
 Toto heslo pečlivě uschovejte, budete ho potřebovat pro přihlášení do soutěží.<br>
-<br>
+
+<br><h2>Informace k soutěži</h2>
+    V roce 2021 bude soutěž probíhat distanční formou pomocí soutěžního systému v sekci Herní server, která bude spuštěna před soutěží. Ke komunikaci během soutěže bude využit YouTube live-stream.<br>
+    Na začátku dostane každý tým určitý obnos DopplerCoinů, za které si bude moci kupovat úlohy. K tomu bude sloužit Obchod, kde budou v nabídce úlohy z různých tématických okruhů a s různou obtížností.<br>
+    Za správně vyřešenou úlohu získá tým bonusový počet DopplerCoinů.<br>
+    Pokud tým nedokáže úlohu vyřešit, může ji prodat v Bazaru, avšak za polovinu kupní ceny. Zde si pak tuto úlohu může koupit jiný tým, opět za polovinu původní ceny, avšak už ji nelze do Bazaru vrátit.<br>
+    Po vypršení časového limitu vítězí tým s největším počtem DopplerCoinů.<br>
+<br><br>
 S pozdravem <br>
 <i>organizační tým Střely a Vlny</i>

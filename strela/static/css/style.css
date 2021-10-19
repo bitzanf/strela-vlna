@@ -69,16 +69,46 @@ footer a {
     white-space: pre-line;
 }
 
-.chat_prichozi {
+.chat_odchozi {
     background-color: #a36ff0;
     text-align: right !important;
 }
 
-.chat_odchozi {
+.chat_prichozi {
     background-color: #fbf092;
 }
 
 .required ::after {
     content: " *";
     color: red;
+}
+
+
+/* stolen from predchozi */
+.faq {
+    text-align: center;
+    font-size: 12pt;
+}
+
+.otazka {
+    margin-bottom: 5px;
+    font-size: 30px;
+    text-transform: uppercase;
+}
+
+.title {
+    text-transform: uppercase;
+    margin-top: 10px; margin-bottom: 10px;
+}
+
+.title2 h2 {
+    text-align: left;
+    font-size: 30px;
+    margin-top: 20px;
+}
+
+.title h2{
+    font-weight: bold; 
+    font-size: 50px;
+    text-align: center;
 }

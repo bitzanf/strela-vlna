@@ -281,8 +281,12 @@ class Tym_Soutez_Otazka(models.Model):
         if tym_soutez.penize >= CENIK[obtiznost][0]:
             otazky = Tym_Soutez_Otazka.objects.filter(stav=0, soutez=soutez, otazka__obtiznost=obtiznost).order_by("?")[:1]
             if len(otazky) == 0:
-                logger.error("Tým {} se pokusil koupit otázku s obtížností {}, které došly.".format(tym, obtiznost))
-                raise Exception("došly otázky s obtížností {} :/".format(obtiznost))
+                if obtiznost == 'A':
+                    logger.info(f'Tým {tym} zakoupil otázku z obchodu, ale koupila se z bazaru')
+                    return cls.buy_bazar(tym, soutez, obtiznost)
+                else:
+                    logger.error("Tým {} se pokusil koupit otázku s obtížností {}, které došly.".format(tym, obtiznost))
+                    raise Exception("došly otázky s obtížností {} :/".format(obtiznost))
             otazka:Tym_Soutez_Otazka = otazky[0]
             otazka.stav = 1
             tym_soutez.penize -= CENIK[obtiznost][0]
@@ -292,7 +296,7 @@ class Tym_Soutez_Otazka(models.Model):
             otazka.save()
             tym_soutez.save()
             return otazka
-        else: raise Exception("nedostatek prostředků pro nákup otázky".format(obtiznost))
+        else: raise Exception("nedostatek prostředků pro nákup otázky")
 
     @classmethod
     @transaction.atomic
@@ -313,7 +317,7 @@ class Tym_Soutez_Otazka(models.Model):
             otazka.save()
             tym_soutez.save()
             return otazka
-        else: raise Exception("nedostatek prostředků pro nákup otázky z bazaru".format(obtiznost))
+        else: raise Exception("nedostatek prostředků pro nákup otázky z bazaru")
 
     @transaction.atomic
     def sell(self):
@@ -327,7 +331,7 @@ class Tym_Soutez_Otazka(models.Model):
         self.stav = 5
         self.odpoved = ""
         team.penize += CENIK[self.otazka.obtiznost][2]
-        logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(team.tym, self.otazka, CENIK[self.otazka.obtiznost][1]))
+        logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(team.tym, self.otazka, CENIK[self.otazka.obtiznost][2]))
         self.save()
         team.save()
 

@@ -219,7 +219,21 @@ class KontrolaOdpovediDetail(LoginRequiredMixin, PermissionRequiredMixin, Update
 
     @transaction.atomic
     def form_valid(self, form):
-        formular = form.save(commit=False)
+        formular:Tym_Soutez_Otazka = form.save(commit=False)
+        if formular.stav != 2:
+            return HttpResponseRedirect(self.get_success_url())
+
+        try:
+            team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
+        except Tym_Soutez.DoesNotExist as e:
+            logger.error("Nepodařilo se nalézt tým v soutěži {}".format(e))
+            messages.error(self.request, "Nepodařilo se nalézt tým v soutěži {}".format(e))
+            return HttpResponseRedirect(self.get_success_url())
+
+        if 'chybnaotazka' in form.data:
+            formular.otazka.stav = 2
+            formular.otazka.save()
+
         if 'b-spravne' in form.data:
             formular.stav = 3
             try:
@@ -240,7 +254,7 @@ class KontrolaOdpovediDetail(LoginRequiredMixin, PermissionRequiredMixin, Update
                 .format(self.request.user,self.object.tym, formular))
             LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.soutez, staryStav=2, novyStav=7) 
             formular.save()
-        return super(KontrolaOdpovediDetail, self).form_valid(form)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class AdminLogin(LoginView):
@@ -550,7 +564,7 @@ class RegistraceIndex(CreateView):
             'heslo': password,
             'login': formular.login,
             'souteze': soutez_list,
-            'tym': formular.jmeno,
+            'tym': formular,
             'skola': formular.skola.nazev
         }
         # finta - abychom nepřenášeli login a heslo mimo server mezi View,
@@ -732,6 +746,8 @@ class HraIndexJsAPI(TemplateView):
             context["o_zakoupene"] = context["otazky"].filter(Q(stav=1)|Q(stav=6)).count()
             context["o_problemy"] = context["otazky"].filter(Q(stav=4)|Q(stav=7)).count()
             context["is_user_tym"] = isinstance(self.request.user, Tym)
+            context["n_otazek_nove_slozitost"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=0).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+            context["n_otazek_bazar_slozitost"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=5).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
         except Soutez.DoesNotExist as e:
             context["aktivni_soutez"] = None
             logger.error("Tým {} se snaží soutěžit když není aktivní žádná soutěž.".format(self.request.user))
@@ -1094,6 +1110,9 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
             messages.error(self.request, "Konverzace nebyla nalezena")
             return HttpResponseRedirect(reverse_lazy('admin_index'))
 
+        if konverzace.otazka.stav != 4:
+            return HttpResponseRedirect(reverse_lazy('podpora_list'))
+
         aktivni_soutez = Soutez.get_aktivni()
 
         try:
@@ -1108,9 +1127,9 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
                 konverzace.otazka.otazka.stav = 2
                 konverzace.otazka.otazka.save()
                 if isinstance(konverzace.sazka, int):
-                    team.penize += konverzace.sazka * 2
-                    logger.info("Uživatel {} uznal týmu {} otázku {}. Otázka byla zadána špatně, týmvyhrál sázku {} DC"
-                        .format(self.request.user,konverzace.tym, konverzace.otazka, konverzace.sazka * 2))
+                    team.penize += min(konverzace.sazka * 2, CENIK[konverzace.otazka.otazka.obtiznost][1])
+                    logger.info("Uživatel {} uznal týmu {} otázku {}. Otázka byla zadána špatně, tým vyhrál sázku {} DC"
+                        .format(self.request.user,konverzace.tym, konverzace.otazka, min(konverzace.sazka * 2, CENIK[konverzace.otazka.otazka.obtiznost][1])))
                 
         if 'b-uznat' in form.data:
             if konverzace.otazka != None:

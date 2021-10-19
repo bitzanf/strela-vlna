@@ -27,6 +27,13 @@
                     <div class="card">
                         <div class="card-header text-center">
                             <b>Nákup otázek</b>
+                            (
+                            {% for o in n_otazek_nove_slozitost %}
+                                {{o.otazka__obtiznost}}:{{o.total}} 
+                            {% empty %}
+                                &empty;
+                            {% endfor %}
+                            )
                         </div>
                     <table class="table">
                         <tr>
@@ -50,6 +57,13 @@
                     <div class="card">
                         <div class="card-header text-center">
                             <b>Nákup otázek z bazaru</b>
+                            (
+                            {% for o in n_otazek_bazar_slozitost %}
+                                {{o.otazka__obtiznost}}:{{o.total}} 
+                            {% empty %}
+                                &empty;
+                            {% endfor %}
+                            )
                         </div>
                     <table class="table">
                         <tr>
