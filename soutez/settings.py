@@ -15,7 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-STRELA_VERZE = '1.5'
+STRELA_VERZE = '1.6'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -162,7 +162,8 @@ INTERNAL_IPS = [
     '193.165.96.249',
     '127.0.0.1',
     '195.113.62.220',
-    '90.179.35.68'
+    '90.179.35.68',
+    '193.165.97.240'
 ]
 
 CACHES = {

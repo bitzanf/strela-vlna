@@ -158,11 +158,14 @@ class Soutez(models.Model):
     
     @classmethod
     @transaction.atomic
-    def get_aktivni(cls, throw=False):
+    def get_aktivni(cls, throw:bool=False, admin:bool=False) -> Soutez | None:
         try:
             soutez:Soutez = Soutez.objects.get(rok=now().year, aktivni=True)
+            cache.set('act_soutez_admin', soutez.pk, timeout=300)
         except Soutez.DoesNotExist as e:
-            #logger.warning("Nenalezena aktivní soutěž.")
+            if admin:
+                cache_val = cache.get('act_soutez_admin')
+                return Soutez.objects.get(pk=cache_val) if cache_val is not None else None
             if not throw:
                 return None
             else:

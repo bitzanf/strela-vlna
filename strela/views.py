@@ -38,7 +38,7 @@ class AdministraceIndex(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
 
     def get_context_data(self, **kwargs):
         context = super(AdministraceIndex, self).get_context_data(**kwargs)
-        context["aktivni_soutez"] = Soutez.get_aktivni()
+        context["aktivni_soutez"] = Soutez.get_aktivni(admin=True)
         if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
         context["n_otazek_celkem"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).count()
         stavy = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).values('stav').annotate(total=Count('stav'))
@@ -79,11 +79,11 @@ class NovaOtazka(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
         formular.save()
         if 'b-ulozit' in form.data:
             logger.info("Uživatel {1} uložil otázku {0}.".format(formular,self.request.user))
-            messages.success(self.request, f'Otázka {formular} byla vytvořena')
+            messages.success(self.request, f'Otázka {formular} byla vytvořena [pk:{formular.pk}]')
             return super().form_valid(form)
         if 'b-nahled' in form.data:
             logger.info("Uživatel {1} uložil otázku {0} s náhledem.".format(formular,self.request.user))
-            messages.success(self.request, f'Otázka {formular} byla vytvořena')
+            messages.success(self.request, f'Otázka {formular} byla vytvořena [pk:{formular.pk}]')
             return HttpResponseRedirect(reverse_lazy('admin-otazka-detail', args = (formular.id,)))
 
 
@@ -147,7 +147,7 @@ class OtazkaAdminDetail(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
                 else:     
                     formular.stav = 1
                     formular.save()
-                    messages.success(self.request,"Otázka byla schválena.")       
+                    messages.success(self.request, f"Otázka {formular.pk} byla schválena.")       
                     logger.info("Otázka {} byla schválena uživatelem {} ".format(formular,self.request.user))
         return HttpResponseRedirect(reverse_lazy('otazky'))
 
@@ -200,7 +200,7 @@ class KontrolaOdpovediIndex(LoginRequiredMixin, PermissionRequiredMixin, Templat
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        soutez = Soutez.get_aktivni()
+        soutez = Soutez.get_aktivni(admin=True)
         if soutez is not None:
             context["is_aktivni_soutez"] = True
             context["soutez_valid"] = True if soutez.prezencni == 'O' else False
@@ -283,7 +283,7 @@ class KontrolaOdpovediJsAPI(PermissionRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        soutez = Soutez.get_aktivni()
+        soutez = Soutez.get_aktivni(admin=True)
         if soutez is not None:
             context["is_aktivni_soutez"] = True
             context["soutez_valid"] = True if soutez.prezencni == 'O' else False
@@ -292,7 +292,7 @@ class KontrolaOdpovediJsAPI(PermissionRequiredMixin, ListView):
         return context
     
     def get_queryset(self):
-        return Tym_Soutez_Otazka.objects.filter(soutez=Soutez.get_aktivni(), stav=2)
+        return Tym_Soutez_Otazka.objects.filter(soutez=Soutez.get_aktivni(admin=True), stav=2)
 
 
 class AdminSoutez(LoginRequiredMixin, PermissionRequiredMixin, ListView):
@@ -301,6 +301,13 @@ class AdminSoutez(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     template_name = 'admin/soutez_list.html'
     login_url = reverse_lazy("admin_login")
     ordering = ['-rok']
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['n'] = {}
+        for s in context['soutez_list']:
+            context['n'][s.pk] = Tym_Soutez.objects.filter(soutez=s).count()
+        return context
 
 
 class AdminNovaSoutez(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -398,7 +405,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
                 messages.success(self.request, s)
                 logger.info("Uživatel {} se pokusil přidat otázky do soutěže {} s výsledkem {}.".format(self.request.user, self.object, s))
         if 'b-start' in form.data:
-            bezici = Soutez.get_aktivni()
+            bezici = Soutez.get_aktivni(admin=True)
             if self.object.rok != now().year:
                 messages.error(self.request, "Lze zahájit pouze letošní soutěž, tj pro rok {}.".format(now().year))
                 logger.error("Uživatel {} se pokusil zahájit soutěž, která není letos".format(self.request.user))
@@ -442,7 +449,7 @@ class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView)
         context = super().get_context_data(**kwargs)
         
         context['soutez'] = soutez
-        if Soutez.get_aktivni() == soutez or soutez.zahajena is None:
+        if Soutez.get_aktivni(admin=True) == soutez or soutez.zahajena is None:
             context['soutez_valid'] = True
         else:
             context['soutez_valid'] = False
@@ -459,7 +466,7 @@ class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView)
     @transaction.atomic
     def form_valid(self, form):
         soutez = Soutez.objects.filter(pk=self.kwargs['pk']).first()
-        if Soutez.get_aktivni() is None and soutez is not None:
+        if Soutez.get_aktivni(admin=True) is None and soutez is not None:
             soutez.zahajena = now()
             soutez.aktivni = True
             soutez.save()
@@ -806,7 +813,7 @@ class HraUdalostitymu(LoginRequiredMixin, TemplateView):
                 if aktivni_soutez is not None: context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
                 context["log_tymu"] = LogTable.objects.filter(tym=self.request.user, soutez=aktivni_soutez).order_by('-cas')
             except Exception as e:
-                messages.error(self.request, "Chyba: {0}".format(e))
+                messages.error(self.request, f"Chyba: {e}")
                 logger.error("Tým {} chyba databáze: {}".format(self.request.user, e))
         else:
              context["aktivni_soutez"] = None       
@@ -867,7 +874,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                         team.save()
                     except Tym_Soutez.DoesNotExist as e:
                         logger.error("Nepodařilo se nalézt tým v soutěži {}".format(e))
-                        messages.error(self.request, "Nepodařilo se nalézt tým v soutěži {}".format(e))
+                        messages.error(self.request, f"Nepodařilo se nalézt tým v soutěži {e}")
                 else:
                     LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=7)
                     messages.info(self.request, "Otázka byla zodpovězena špatně")
@@ -978,7 +985,7 @@ class ConvoListJsAPI(ListView):
         if isinstance(self.request.user, Tym):
             return ChatConvos.objects.filter(Q(otazka__soutez=Soutez.get_aktivni())|Q(otazka=None), tym=self.request.user)
         elif self.request.user.has_perm('strela.podpora'):
-            return ChatConvos.objects.filter(Q(otazka__soutez=Soutez.get_aktivni()) | Q(otazka=None))
+            return ChatConvos.objects.filter(Q(otazka__soutez=Soutez.get_aktivni(admin=True)) | Q(otazka=None))
         else:
             return ChatConvos.objects.none()
 
@@ -1094,7 +1101,7 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        soutez = Soutez.get_aktivni()
+        soutez = Soutez.get_aktivni(admin=True)
         if soutez is not None:
             context["is_aktivni_soutez"] = True
             context["soutez_valid"] = True if soutez.prezencni == 'O' else False
@@ -1113,7 +1120,7 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
         if konverzace.otazka.stav != 4:
             return HttpResponseRedirect(reverse_lazy('podpora_list'))
 
-        aktivni_soutez = Soutez.get_aktivni()
+        aktivni_soutez = Soutez.get_aktivni(admin=True)
 
         try:
             team:Tym_Soutez = Tym_Soutez.objects.get(tym=konverzace.tym, soutez=aktivni_soutez)

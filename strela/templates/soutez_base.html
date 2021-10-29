@@ -14,7 +14,7 @@
     {% block extrajs %}{% endblock %}
 </head>
 
-<body class="d-flex flex-column min-wh-100">   
+<body class="d-flex flex-column min-wh-100" style="overflow-x: hidden">   
     {% url "index_souteze" as index_souteze %}
     {% url "registrace_souteze" as registrace_souteze %}
     {% url "pravidla" as pravidla %}
@@ -41,11 +41,7 @@
                 <a class="nav-link" href={% url 'vysledky' %}>Výsledky</a>
             </li>   
             <li class="nav-item">
-                {% if is_aktivni_soutez %}
-                    <a class="nav-link" href={% url "herni_server" %}>Herní server</a>
-                {% else %}
-                    <a class="nav-link disabled" href="#">Herní server</a>
-                {% endif %}
+                <a class="nav-link" href={% url "herni_server" %}>Herní server</a>
             </li>   
         </ul>     
     </nav>
@@ -68,7 +64,7 @@
                         </div>
                 {% else %}
                         <div class="mb-0">
-                                Registrace do soutěže <b> {{ r.pretty_name }} </b> pro rok {{ r.rok }} již byla ukončena.
+                                Registrace do soutěže <b> {{ r.pretty_name }} </b> pro rok {{ r.rok }} neprobíhá.
                         </div>
                 {% endif %}
                 {% endfor %}

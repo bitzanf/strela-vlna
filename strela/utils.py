@@ -113,6 +113,11 @@ def vokalizace_z_ze(skola: Skola) -> str:
         ii = skola_words[i]
         iis = slugify(ii)
         if iis == 'skola':
+            for j in range(i - 1, -1, -1):
+                if skola_out[j].endswith(('á', 'a')):
+                    skola_out[j] += 'é'
+                else:
+                    break
             if ii[0].islower():
                 skola_out.append('školy')
             else:

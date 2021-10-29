@@ -1,6 +1,7 @@
 {% if user.is_authenticated %}
     {% include 'latexify/stylesheets.html' %}
     {% load latexify %}
+    {% load strela_tags %}
     {% if api_db_err %}
         <div class="alert alert-danger" role="alert">
             <h4 class="alert-heading">Chyba databáze</h4>
@@ -39,7 +40,7 @@
                         <tr>
                             {% for i in cenik_o %}
                                 <td>
-                                    <a href="{% url 'koupit_otazku' i.1.0 0 %}" class="btn btn-primary {% if tym.penize < i.0.1.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.0 }} DC<span class="equalsignshift">=</span></a>
+                                    <a href="{% url 'koupit_otazku' i.1.0 0 %}" class="btn btn-primary {% if tym.penize < i.0.1.0 or not n_otazek_nove_slozitost|is_shop_available:i.0.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.0 }} DC<span class="equalsignshift">=</span></a>
                                 </td>
                             {% endfor %}
                         </tr>
@@ -69,7 +70,7 @@
                         <tr>
                             {% for i in cenik_o %}
                                 <td>
-                                    <a href="{% url 'koupit_otazku' i.1.0 1 %}" class="btn btn-secondary {% if tym.penize < i.0.1.2 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.2 }} DC<span class="equalsignshift">=</span></a>
+                                    <a href="{% url 'koupit_otazku' i.1.0 1 %}" class="btn btn-secondary {% if tym.penize < i.0.1.2 or not n_otazek_bazar_slozitost|is_shop_available:i.0.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.2 }} DC<span class="equalsignshift">=</span></a>
                                 </td>
                             {% endfor %}
                         </tr>

@@ -14,72 +14,73 @@
 
 {% block content %}
 {% load bootstrap4 %}
+{% load strela_tags %}
 <div class="row mb-3">
     <a href="{% url 'nova_soutez' %}" class="btn btn-primary {% if not 'strela.novasoutez' in perms %} disabled {% endif %}">Nová soutěž</a>
 </div>  
- <div class="row">    
-    <table class="table table-hover" id="datatable_soutez_admin">
-         <thead>
-              <tr>
-                 <th scope="col">Rok</th>
-                 <th scope="col">Zaměření</th>
-                 <th scope="col">Typ</th>
-                 <th scope="col">Aktivni</th>
-                 <th scope="col">Limit týmu</th>
-                 <th scope="col">Registrace od</th>
-                 <th scope="col">Registrace do</th>
-                 <th scope="col">Registrace</th>
-                 <th scope="col">Zahájena</th>
-                 <th scope="col">Délka</th>
-                 <th scope="col">Kapacita</th>
-             </tr>
-         </thead>
-         <tbody>
-             {% for s in soutez_list %}
-                 <tr class="clickable-row" data-href="{% url 'admin_soutez_detail' s.pk %}" style="cursor: pointer;">
-                    <td>{{s.rok}}</td>  
-                    <td>{{s.typ}}-{{s.get_typ_display}}</td>
-                    <td><span class="badge badge-secondary">{{s.prezencni}}</span></td>
-                    <td>{% if s.aktivni %} 
-                            <i class="bi bi-check-circle" style="color: green"></i> Ano
-                        {% else %} 
-                            <i class="bi bi-x-octagon-fill" style="color: red"></i> Ne
-                        {% endif %}
-                    </td>
-                    <td>{{s.limit }}</td>   
-                    <td>{{s.regod }}</td>
-                    <td>{{s.regdo}}</td>  
-                    {% if s.registrace %}
-                       <td><span class="badge badge-pill badge-success">Probíhá</span></td>  
-                    {% else %}      
-                       <td><span class="badge badge-pill badge-primary">Neprobíhá</span></td>  
-                    {% endif %}   
-                    <td>{{s.zahajena}}</td>  
-                    <td>{{s.delkam}}</td>  
-                    {% if s.is_soutez_full %}
-                       <td><span class="badge badge-danger">Zaplněno</span></td>  
-                    {% else %}   
-                       <td><span class="badge badge-success">Volno</span></td>  
-                    {% endif %}   
-                 </tr>
-                    {% empty %}
-                        <tr><td colspan=10 class="text-center">Žádné soutěže k zobrazení</td></tr>
-                    {% endfor %}
-         </tbody>
-     </table> 
-     </div>
- 
- <script type="text/javascript">
-     jQuery(document).ready(function($) {
-     $(".clickable-row").click(function() {
-         window.location = $(this).data("href");
-     });
- });
- $(document).ready(function() {
-         $('#datatable_soutez_admin').DataTable({
-             "pageLength": 25,
-             stateSave: true
-             });
-     } );
- </script>
+<div class="row">
+   <table class="table table-hover" id="datatable_soutez_admin">
+        <thead>
+            <tr>
+                <th scope="col">Rok</th>
+                <th scope="col">Zaměření</th>
+                <th scope="col">Typ</th>
+                <th scope="col">Aktivni</th>
+                <th scope="col">Limit týmů</th>
+                <th scope="col">Registrace od</th>
+                <th scope="col">Registrace do</th>
+                <th scope="col">Registrace</th>
+                <th scope="col">Zahájena</th>
+                <th scope="col">Délka</th>
+                <th scope="col">Kapacita</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in soutez_list %}
+            <tr class="clickable-row" data-href="{% url 'admin_soutez_detail' s.pk %}" style="cursor: pointer;">
+                <td>{{s.rok}}</td>  
+                <td>{{s.typ}}-{{s.get_typ_display}}</td>
+                <td><span class="badge badge-secondary">{{s.prezencni}}</span></td>
+                <td>{% if s.aktivni %} 
+                        <i class="bi bi-check-circle" style="color: green"></i> Ano
+                    {% else %} 
+                        <i class="bi bi-x-octagon-fill" style="color: red"></i> Ne
+                    {% endif %}
+                </td>
+                <td>{{ n|list_index:s.pk }}/{{ s.limit }}</td>
+                <td>{{ s.regod }}</td>
+                <td>{{ s.regdo}}</td>
+                {% if s.registrace %}
+                    <td><span class="badge badge-pill badge-success">Probíhá</span></td>
+                {% else %}
+                    <td><span class="badge badge-pill badge-primary">Neprobíhá</span></td>
+                {% endif %}
+                <td>{{ s.zahajena|default:'<i class="bi bi-x-octagon-fill" style="color: red"></i>' }}</td>
+                <td>{{ s.delkam }}</td>
+                {% if s.is_soutez_full %}
+                    <td><span class="badge badge-danger">Zaplněno</span></td>
+                {% else %}
+                    <td><span class="badge badge-success">Volno</span></td>
+                {% endif %}
+            </tr>
+            {% empty %}
+                <tr><td colspan=10 class="text-center">Žádné soutěže k zobrazení</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script type="text/javascript">
+    jQuery(document).ready(function($) {
+        $(".clickable-row").click(function() {
+            window.location = $(this).data("href");
+        });
+    });
+    $(document).ready(function() {
+        $('#datatable_soutez_admin').DataTable({
+            "pageLength": 25,
+            stateSave: true
+        });
+    });
+</script>
 {% endblock %}

@@ -37,15 +37,15 @@ class Command(BaseCommand):
             for o in otazky:
                 r += 1
                 ProgressBar(r, pocet_otazek, prefix = 'generuji LaTeX ', barLength = 50) 
-                pom.append((o.cisloVSoutezi,
-                            tex_escape(o.otazka.zadani), 
-                            o.otazka.obtiznost,
-                            CENIK[o.otazka.obtiznost][0],
-                            CENIK[o.otazka.obtiznost][1],
-                            CENIK[o.otazka.obtiznost][2]))
+                pom.append({'cislo': o.cisloVSoutezi,
+                    'zadani': tex_escape(o.otazka.zadani), 
+                    'typ': o.otazka.typ,
+                    'obtiznost': o.otazka.obtiznost,
+                    'cenik':CENIK[o.otazka.obtiznost]
+                    })
             # seřadí otázky podle obtížnosti sestupně a v rámci obtížnosti podle délky,
             # aby se k sobě dostaly otázky s podobnou délkou a PDF vypadalo lépe.    
-            pom.sort(key=lambda t: (t[2],len(t[1])), reverse=True)
+            pom.sort(key=lambda t: (t['obtiznost'],len(t['zadani'])), reverse=True)
             f = open("zadani-{}.pdf".format(id_soutez),"wb")
             print("generuji PDF")
             f.write(compile_template_to_pdf(template_name, {'otazky': pom }))
