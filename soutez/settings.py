@@ -20,9 +20,6 @@ STRELA_VERZE = '1.7'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '9p85p(rghc!n(&8^+5l_06p!36_6*-0%))k96agfi@bc7g+n_d'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 #DEBUG = False
@@ -93,25 +90,6 @@ LATEX_INTERPRETER = 'lualatex'
 
 # ulozeni session do Memcached
 SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
-
-# Database
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': BASE_DIR / 'db.sqlite3',
-#    }
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'strela_vlna',
-        'USER': 'django',
-        'PASSWORD': 'a5easfa4',
-        'HOST': 'localhost',   # Or an IP Address that your DB is hosted on
-        'PORT': '3306',
-    }
-}
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -221,10 +199,8 @@ LOGGING = {
         },
     },
 }
-DEFAULT_FROM_EMAIL = "petrgchd523@seznam.cz"
-EMAIL_HOST = 'smtp.seznam.cz'
-EMAIL_PORT = 587
-EMAIL_HOST_USER = 'petrgchd523@seznam.cz'
-EMAIL_HOST_PASSWORD = 'Streda03'
-EMAIL_USE_TLS = True
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+try:
+    from . settings_internal import *
+except:
+    pass
