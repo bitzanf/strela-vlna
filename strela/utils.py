@@ -1,5 +1,6 @@
 from django.core.cache import cache
-from . models import Soutez, Skola
+from django.db.models.query import QuerySet
+from . models import Soutez, Skola, Otazka, Tym_Soutez_Otazka
 from django.utils.timezone import now
 from django.contrib import messages
 from django.utils.text import slugify
@@ -114,8 +115,8 @@ def vokalizace_z_ze(skola: Skola) -> str:
         iis = slugify(ii)
         if iis == 'skola':
             for j in range(i - 1, -1, -1):
-                if skola_out[j].endswith(('á', 'a')):
-                    skola_out[j] += 'é'
+                if skola_out[j].endswith(('á', 'a')) and len(skola_out[j]) > 2:
+                    skola_out[j] = skola_out[j][:-1] + 'é'
                 else:
                     break
             if ii[0].islower():
@@ -140,7 +141,7 @@ def vokalizace_z_ze(skola: Skola) -> str:
     return out
 
 def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool:
-    rx = re.compile('^[\\d\\+\\-\\*/,.\\(\\)]+$')
+    rx = re.compile(r'^[\d\+\-\*/,.\(\)]+$')
     if rx.match(odpoved) and rx.match(reseni):
         try:
             return abs(1 - (eval(odpoved.replace(',', '.')) / eval(reseni.replace(',', '.')))) < odchylka

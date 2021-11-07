@@ -341,7 +341,7 @@ class Tym_Soutez_Otazka(models.Model):
     @classmethod
     def sellall(cls, soutez:Soutez):
         logger.info(f'Automatické prodávání otázek v soutěži {soutez}')
-        otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 4, 6, 7], soutez=soutez)
+        otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 6, 7], soutez=soutez)
         for o in otazky:
             o.sell()
     
@@ -387,7 +387,7 @@ class LogTable(models.Model):
                 cache.set(cache_key, to)
                 return to
             except Exception as e:
-                logger.error("Chyba {} při získávání atributu cisloVSoutezi".format(e))
+                logger.error("Chyba {} při získávání atributu typOtazky".format(e))
                 return 0
         else:
             return cached  

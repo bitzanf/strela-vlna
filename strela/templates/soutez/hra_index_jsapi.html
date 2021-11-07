@@ -29,8 +29,8 @@
                         <div class="card-header text-center">
                             <b>Nákup otázek</b>
                             (
-                            {% for o in n_otazek_nove_slozitost %}
-                                {{o.otazka__obtiznost}}:{{o.total}} 
+                            {% for o in n_otazek_nove_slozitost.items %}
+                                {{o.0}}:{{o.1}}
                             {% empty %}
                                 &empty;
                             {% endfor %}
@@ -40,7 +40,7 @@
                         <tr>
                             {% for i in cenik_o %}
                                 <td>
-                                    <a href="{% url 'koupit_otazku' i.1.0 0 %}" class="btn btn-primary {% if tym.penize < i.0.1.0 or not n_otazek_nove_slozitost|is_shop_available:i.0.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.0 }} DC<span class="equalsignshift">=</span></a>
+                                    <a href="{% url 'koupit_otazku' i.1.0 0 %}" class="btn btn-primary {% if tym.penize < i.0.1.0 or i.0.0 not in n_otazek_nove_slozitost %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.0 }} DC<span class="equalsignshift">=</span></a>
                                 </td>
                             {% endfor %}
                         </tr>
@@ -59,8 +59,8 @@
                         <div class="card-header text-center">
                             <b>Nákup otázek z bazaru</b>
                             (
-                            {% for o in n_otazek_bazar_slozitost %}
-                                {{o.otazka__obtiznost}}:{{o.total}} 
+                            {% for o in n_otazek_bazar_slozitost.items %}
+                                {{o.0}}:{{o.1}}
                             {% empty %}
                                 &empty;
                             {% endfor %}
@@ -70,7 +70,7 @@
                         <tr>
                             {% for i in cenik_o %}
                                 <td>
-                                    <a href="{% url 'koupit_otazku' i.1.0 1 %}" class="btn btn-secondary {% if tym.penize < i.0.1.2 or not n_otazek_bazar_slozitost|is_shop_available:i.0.0 %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.2 }} DC<span class="equalsignshift">=</span></a>
+                                    <a href="{% url 'koupit_otazku' i.1.0 1 %}" class="btn btn-secondary {% if tym.penize < i.0.1.2 or i.0.0 not in n_otazek_bazar_slozitost %} disabled {% endif %}">{{ i.1.1 }} <img src="/static/img/vozik.png" width="20" height="20"> {{ i.0.1.2 }} DC<span class="equalsignshift">=</span></a>
                                 </td>
                             {% endfor %}
                         </tr>

@@ -97,11 +97,7 @@ class Otazky(LoginRequiredMixin, PermissionRequiredMixin, SuccessMessageMixin, L
         return user.has_perm('strela.adminsouteze') and (user.has_perm('strela.zadavatel') or user.has_perm('strela.kontrolazadani'))
     
     def get_queryset(self):
-        if self.request.user.has_perm('strela.zadavatel'):
-            qs = Otazka.objects.filter(stav = 0)
-        if self.request.user.has_perm('strela.kontrolazadani'):
-            qs =  Otazka.objects.all()
-        return qs
+        return Otazka.objects.all()
 
 
 class OtazkaAdminDetail(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -140,6 +136,10 @@ class OtazkaAdminDetail(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
                     logger.info("Uživatel {} uložil s náhledem otázku {}.".format(self.request.user,formular))
                 return HttpResponseRedirect(reverse_lazy('admin-otazka-detail', args = (formular.pk,)))
             if 'b-schvalit' in form.data:
+                if not self.request.user.has_perm('strela.kontrolazadani'):
+                    messages.error(self.request, 'Ke schvalování otázek nemáte oprávnění!')
+                    logger.warning(f'Uživatel {self.request.user} se pokusil schválit otázku {formular}, ale nemá k tomu oprávnění')
+                    return HttpResponseRedirect(reverse_lazy('admin-otazka-detail', args = (formular.pk,)))
                 if Otazka.objects.filter(zadani=formular.zadani).exclude(pk=formular.pk).exists():
                     messages.warning(self.request,"Otázku nelze schválit, protože existuje jiná otázka se stejným zadáním.")
                     logger.warning("Uživatel {} se pokusil schválit otázku {}, kterou nelze schválit, protože existuje jiná otázka se stejným zadáním.".format(self.request.user,formular))
@@ -155,6 +155,10 @@ class OtazkaAdminDetail(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
     def form_invalid(self, form):
         if form.instance.stav == 1:
             if 'b-odschvalit' in form.data:
+                if not self.request.user.has_perm('strela.kontrolazadani'):
+                    messages.error(self.request, 'K odschválení otázek nemáte oprávnění!')
+                    logger.warning(f'Uživatel {self.request.user} se pokusil odschválit otázku {form.instance}, ale nemá k tomu oprávnění')
+                    return HttpResponseRedirect(reverse_lazy('admin-otazka-detail', args = (form.instance.pk,)))
                 try:
                     souteze = Soutez.objects.filter(rok=now().year)  
                     otazka = Otazka.objects.get(pk=form.instance.pk)
@@ -351,7 +355,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         # ze seznamu otázek vyloučí otázky použité v letošních nebo loňských soutěžích
         # otázky seskupí podle obtížnosti a sečte počty otázek v jednotlivých obtížnostech
         context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects  
-                .filter(soutez__rok__in=(now().year-1,now().year)) 
+                .filter(Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0))
                 .values_list('otazka__id', flat=True)))  \
             .values('obtiznost') \
             .annotate(total=Count('obtiznost')) 
@@ -389,8 +393,8 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
                         # vezme všechny schválené otázky použitelné v soutěži daného typu
                         qs = qs.filter(typ__in=OTAZKASOUTEZ[self.object.typ])
                         qs = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
-                                    .filter(soutez__rok__in=(now().year-1,now().year))
-                                    .values_list('otazka__id', flat=True)))    
+                                    .filter(Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0))
+                                    .values_list('otazka__id', flat=True)))
                         qs = qs.order_by('?')[:pocet_otazek//5]
                         for o in qs:
                             Tym_Soutez_Otazka.objects.create(soutez=self.object, otazka=o, stav=0,
@@ -724,7 +728,7 @@ class SoutezVysledky(ListView):
         return context
 
     def get_queryset(self):
-        return Soutez.objects.filter(zahajena__isnull=False).order_by("-rok")
+        return Soutez.objects.filter(zahajena__isnull=False, aktivni=False).order_by("-rok")
 
 
 class SoutezVysledkyDetail(DetailView):
@@ -753,15 +757,31 @@ class HraIndexJsAPI(TemplateView):
             context["o_zakoupene"] = context["otazky"].filter(Q(stav=1)|Q(stav=6)).count()
             context["o_problemy"] = context["otazky"].filter(Q(stav=4)|Q(stav=7)).count()
             context["is_user_tym"] = isinstance(self.request.user, Tym)
-            context["n_otazek_nove_slozitost"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=0).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
-            context["n_otazek_bazar_slozitost"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=5).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+
+            n_nove_qs = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=0).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+            n_bazar_qs = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=5).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+            n_nove:dict[str, int] = { 'A' : 0 }
+            n_bazar:dict[str, int] = {}
+            for nqs in n_nove_qs:
+                n_nove.update({ nqs['otazka__obtiznost'] : int(nqs['total']) })
+            for nqs in n_bazar_qs:
+                n_bazar.update({ nqs['otazka__obtiznost'] : int(nqs['total']) })
+
+            try:
+                n_nove['A'] += n_bazar['A']
+            except KeyError:
+                pass
+
+            context["n_otazek_nove_slozitost"] = n_nove
+            context["n_otazek_bazar_slozitost"] = n_bazar
+
         except Soutez.DoesNotExist as e:
             context["aktivni_soutez"] = None
             logger.error("Tým {} se snaží soutěžit když není aktivní žádná soutěž.".format(self.request.user))
         except Tym_Soutez.DoesNotExist:
             logger.error("Tým {} se pokouší soutěžit v {} kam ale není přihlášen.".format(self.request.user, context["aktivni_soutez"]))
         except Exception as e:
-            context["api_db_err"] = "{0}".format(e) #nechutny ale nevim jak jinak a tohle funguje
+            context["api_db_err"] = f"{e}" #nechutny ale nevim jak jinak a tohle funguje
             logger.error("Došlo k chybě {}. Tým {} Soutěž {}".format(e, self.request.user, context["aktivni_soutez"]))
         
         if context["aktivni_soutez"] != None:
@@ -1117,8 +1137,9 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
             messages.error(self.request, "Konverzace nebyla nalezena")
             return HttpResponseRedirect(reverse_lazy('admin_index'))
 
-        if konverzace.otazka.stav != 4:
-            return HttpResponseRedirect(reverse_lazy('podpora_list'))
+        if konverzace.otazka is not None:
+            if konverzace.otazka.stav != 4:
+                return HttpResponseRedirect(reverse_lazy('podpora_list'))
 
         aktivni_soutez = Soutez.get_aktivni(admin=True)
 

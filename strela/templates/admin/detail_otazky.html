@@ -47,7 +47,9 @@
       <div class="card-footer">
         {% buttons %}
           {% if otazka.stav == 1 %}
-            <button type="submit" class="btn btn-warning" name="b-odschvalit"> Odschválit otázku</button>
+            {% if 'strela.kontrolazadani' in perms %}
+              <button type="submit" class="btn btn-warning" name="b-odschvalit"> Odschválit otázku</button>
+            {% endif %}
           {% else %}  
             <button type="submit" class="btn btn-primary" name="b-ulozit">Uložit otázku</button>
             <button type="submit" class="btn btn-primary" name="b-nahled">Uložit otázku a náhled</button>
