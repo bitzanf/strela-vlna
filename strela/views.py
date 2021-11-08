@@ -352,20 +352,19 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context["v_soutezi_celkem"] = sum(context["v_soutezi"].values_list('total', flat=True))
         # vezme všechny schválené otázky použitelné v soutěži daného typu
         qs = Otazka.objects.filter(stav=1, typ__in=OTAZKASOUTEZ[self.object.typ])
-        # ze seznamu otázek vyloučí otázky použité v letošních nebo loňských soutěžích
+        # ze seznamu otázek vyloučí otázky již použité v této soutěži nebo (letošních a loňských soutěžích v jiném stavu než 'nová')
         # otázky seskupí podle obtížnosti a sečte počty otázek v jednotlivých obtížnostech
-        context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects  
-                .filter(Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0))
-                .values_list('otazka__id', flat=True)))  \
+        context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
+                .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
+                .values_list('otazka__id', flat=True))) \
             .values('obtiznost') \
-            .annotate(total=Count('obtiznost')) 
+            .annotate(total=Count('obtiznost'))
         # vezme počty otázek v jednotlivých obtížnostech z minulého dotazu,
         # udělá z nich list a sečte je dohromady
         context["dostupne_celkem"] = sum(context["dostupne"].values_list('total',flat=True))    
         context["prihlaseno"]=Tym_Soutez.objects.filter(soutez=self.object).count()
         context['form'] = self.get_form
         context['akt_rok'] = now().year
-        #context['tymy'] = Tym.objects.filter(id__in = Tym_Soutez.objects.filter(soutez=self.object).values_list('tym__id', flat=True))
         context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object)
         return context
 
@@ -393,7 +392,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
                         # vezme všechny schválené otázky použitelné v soutěži daného typu
                         qs = qs.filter(typ__in=OTAZKASOUTEZ[self.object.typ])
                         qs = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
-                                    .filter(Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0))
+                                    .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
                                     .values_list('otazka__id', flat=True)))
                         qs = qs.order_by('?')[:pocet_otazek//5]
                         for o in qs:
