@@ -158,29 +158,28 @@ class Soutez(models.Model):
     
     @classmethod
     @transaction.atomic
-    def get_aktivni(cls, throw:bool=False, admin:bool=False) -> Soutez | None:
+    def get_aktivni(cls, admin:bool=False) -> Soutez | None:
         try:
             soutez:Soutez = Soutez.objects.get(rok=now().year, aktivni=True)
             cache.set('act_soutez_admin', soutez.pk, timeout=300)
         except Soutez.DoesNotExist as e:
             if admin:
                 cache_val = cache.get('act_soutez_admin')
-                return Soutez.objects.get(pk=cache_val) if cache_val is not None else None
-            if not throw:
-                return None
-            else:
-                raise e
+                soutez = Soutez.objects.get(pk=cache_val) if cache_val is not None else None
+                return soutez if soutez.zahajena is not None and soutez.aktivni else None
+            return None
         if now() < (soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)):
             return soutez
         else:
-            Tym_Soutez_Otazka.sellall(soutez)
-            soutez.aktivni = False 
-            logger.info(f"Soutěž {soutez} byla ukončena.")
-            soutez.save()
-            if not throw:
-                return None
-            else:
-                raise Soutez.DoesNotExist()
+            saa = cache.get('soutez_sellall')
+            if not saa:
+                cache.set('soutez_sellall', True, timeout=600)
+                Tym_Soutez_Otazka.sellall(soutez)
+                soutez.aktivni = False 
+                logger.info(f"Soutěž {soutez} byla ukončena.")
+                soutez.save()
+                cache.set('soutez_sellall', False, timeout=600)
+            return None
 
     @property
     def registrace(self) -> bool:
@@ -324,6 +323,9 @@ class Tym_Soutez_Otazka(models.Model):
 
     @transaction.atomic
     def sell(self):
+        self.sell_unsafe()
+
+    def sell_unsafe(self):
         if self.bazar: return
         LogTable.objects.create(tym=self.tym, otazka=self.otazka, soutez=self.soutez, staryStav=self.stav, novyStav=5)
         
@@ -339,11 +341,12 @@ class Tym_Soutez_Otazka(models.Model):
         team.save()
 
     @classmethod
+    @transaction.atomic
     def sellall(cls, soutez:Soutez):
         logger.info(f'Automatické prodávání otázek v soutěži {soutez}')
         otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 6, 7], soutez=soutez)
         for o in otazky:
-            o.sell()
+            o.sell_unsafe()
     
     
 

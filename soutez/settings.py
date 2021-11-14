@@ -169,7 +169,7 @@ LOGGING = {
         },
         'verbose': {
             'format': '%(levelname)s %(asctime)s '
-                '%(name)s.%(funcName)s:%(lineno)s %(process)d %(thread)d '
+                '%(name)s.%(funcName)s:%(lineno)s %(process)d '
                 '%(message)s',
         },
         'request': {

@@ -177,14 +177,15 @@ class SoutezAdmin(admin.ModelAdmin):
         
 class TymSoutezOtazkaAdmin(admin.ModelAdmin):
     list_display = ('tym', 'soutez','otazka','cisloVSoutezi','stav','odpoved','bazar') 
-    search_fields = ('cisloVSoutezi', )
+    search_fields = ('cisloVSoutezi', 'tym')
 
 class OtazkaAdmin(admin.ModelAdmin):
     list_display = ('typ', 'pk','stav','obtiznost','vyhodnoceni')
     search_fields = ('pk',)
 
 class LogTableAdmin(admin.ModelAdmin):
-    list_display = ('tym', 'otazka','soutez','staryStav','novyStav')    
+    list_display = ('tym', 'otazka','soutez','staryStav','novyStav', 'cas')
+    search_fields = ('tym', 'otazka')
 
 class EmailInfoAdmin(admin.ModelAdmin):
     list_display = ('odeslal','soutez','kdy')

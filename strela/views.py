@@ -348,7 +348,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context["v_soutezi"] = Tym_Soutez_Otazka.objects.filter(soutez=self.object) \
             .values('otazka__obtiznost') \
             .annotate(total=Count('otazka__obtiznost'))
-        # vezme součty obtížností z předchozího dotazu, udělá z nich list hodnot součtů a sečte je dohromady.    
+        # vezme součty obtížností z předchozího dotazu, udělá z nich list hodnot součtů a sečte je dohromady.
         context["v_soutezi_celkem"] = sum(context["v_soutezi"].values_list('total', flat=True))
         # vezme všechny schválené otázky použitelné v soutěži daného typu
         qs = Otazka.objects.filter(stav=1, typ__in=OTAZKASOUTEZ[self.object.typ])
@@ -356,7 +356,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         # otázky seskupí podle obtížnosti a sečte počty otázek v jednotlivých obtížnostech
         context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
                 .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
-                .values_list('otazka__id', flat=True))) \
+                .values_list('otazka__id', flat=True))).order_by('+obtiznost') \
             .values('obtiznost') \
             .annotate(total=Count('obtiznost'))
         # vezme počty otázek v jednotlivých obtížnostech z minulého dotazu,
@@ -365,7 +365,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context["prihlaseno"]=Tym_Soutez.objects.filter(soutez=self.object).count()
         context['form'] = self.get_form
         context['akt_rok'] = now().year
-        context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object)
+        context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object).order_by('+cislo')
         return context
 
     def post(self, request, *args, **kwargs):
@@ -394,7 +394,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
                         qs = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
                                     .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
                                     .values_list('otazka__id', flat=True)))
-                        qs = qs.order_by('?')[:pocet_otazek//5]
+                        qs = qs.order_by('?')[:pocet_otazek]
                         for o in qs:
                             Tym_Soutez_Otazka.objects.create(soutez=self.object, otazka=o, stav=0,
                                 cisloVSoutezi=get_next_value("rok-{}-soutez-{}-id-{}".format(self.object.rok,self.object.zamereni,self.object.pk)))
@@ -862,7 +862,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             if self.object.tym != self.request.user:
                 context["nepatri"] = True
         except Exception as e:
-            messages.error(self.request, "Chyba: {0}".format(e))
+            messages.error(self.request, f"Chyba: {e}")
             logger.error("Tým {} chyba databáze: {}".format(self.request.user, e))
         if self.object.bylaPodpora:
             self.request.session['chat_redirect_target'] = reverse_lazy('otazka-detail', args=(self.object.pk,))
@@ -878,6 +878,9 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
     @transaction.atomic
     def form_valid(self, form):
         formular:Tym_Soutez_Otazka = form.save(commit=False)
+        if formular.stav not in (1, 6, 7):
+            messages.warning(self.request, f'Tato otázka nejde odevzdat, jelokož je ve stavu {formular.get_stav_display()}')
+            return HttpResponseRedirect(self.get_success_url())
         if 'b-kontrola' in form.data:
             if self.object.otazka.vyhodnoceni == 0:
                 if auto_kontrola_odpovedi(form.cleaned_data.get("odpoved"), self.object.otazka.reseni):
@@ -888,18 +891,18 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                     try:
                         team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
                         team.penize += CENIK[self.object.otazka.obtiznost][1]
-                        logger.info("Tým {} odevzdal otázku {}, kterou zodpověděl SPRÁVNĚ a získal {} DC.".format(self.request.user, formular.otazka, CENIK[self.object.otazka.obtiznost][1]))
+                        logger.info("Tým {0} odevzdal otázku {1}, kterou zodpověděl SPRÁVNĚ ({3}) a získal {2} DC.".format(self.request.user, formular.otazka, CENIK[self.object.otazka.obtiznost][1], formular.odpoved))
                         formular.save()
                         team.save()
                     except Tym_Soutez.DoesNotExist as e:
-                        logger.error("Nepodařilo se nalézt tým v soutěži {}".format(e))
+                        logger.error(f"Nepodařilo se nalézt tým v soutěži {e}")
                         messages.error(self.request, f"Nepodařilo se nalézt tým v soutěži {e}")
                 else:
                     LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=7)
                     messages.info(self.request, "Otázka byla zodpovězena špatně")
                     formular.stav = 7
                     formular.odpoved = form.cleaned_data.get("odpoved")
-                    logger.info("Tým {} odevzdal otázku {}, na kterou odpověděl CHYBNĚ.".format(self.request.user, formular.otazka))
+                    logger.info("Tým {0} odevzdal otázku {1}, na kterou odpověděl CHYBNĚ ({2}).".format(self.request.user, formular.otazka, formular.odpoved))
                     formular.save()
             else:
                 messages.info(self.request, "Otázka byla odeslána k hodnocení")
@@ -1154,9 +1157,9 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
                 konverzace.otazka.otazka.stav = 2
                 konverzace.otazka.otazka.save()
                 if isinstance(konverzace.sazka, int):
-                    team.penize += min(konverzace.sazka * 2, CENIK[konverzace.otazka.otazka.obtiznost][1])
+                    team.penize += konverzace.sazka * 2
                     logger.info("Uživatel {} uznal týmu {} otázku {}. Otázka byla zadána špatně, tým vyhrál sázku {} DC"
-                        .format(self.request.user,konverzace.tym, konverzace.otazka, min(konverzace.sazka * 2, CENIK[konverzace.otazka.otazka.obtiznost][1])))
+                        .format(self.request.user,konverzace.tym, konverzace.otazka, konverzace.sazka * 2))
                 
         if 'b-uznat' in form.data:
             if konverzace.otazka != None:
