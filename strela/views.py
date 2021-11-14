@@ -345,7 +345,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context = super(AdminSoutezDetail, self).get_context_data(**kwargs)
         # vybere všechny otázky přiřazené k dané soutěži, seskupí je podle obtížnosti
         # a sečte počty otázek v jednotlivých obtížnostech
-        context["v_soutezi"] = Tym_Soutez_Otazka.objects.filter(soutez=self.object) \
+        context["v_soutezi"] = Tym_Soutez_Otazka.objects.filter(soutez=self.object).order_by('otazka__obtiznost') \
             .values('otazka__obtiznost') \
             .annotate(total=Count('otazka__obtiznost'))
         # vezme součty obtížností z předchozího dotazu, udělá z nich list hodnot součtů a sečte je dohromady.
@@ -356,7 +356,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         # otázky seskupí podle obtížnosti a sečte počty otázek v jednotlivých obtížnostech
         context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
                 .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
-                .values_list('otazka__id', flat=True))).order_by('+obtiznost') \
+                .values_list('otazka__id', flat=True))).order_by('obtiznost') \
             .values('obtiznost') \
             .annotate(total=Count('obtiznost'))
         # vezme počty otázek v jednotlivých obtížnostech z minulého dotazu,
@@ -365,7 +365,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context["prihlaseno"]=Tym_Soutez.objects.filter(soutez=self.object).count()
         context['form'] = self.get_form
         context['akt_rok'] = now().year
-        context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object).order_by('+cislo')
+        context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object).order_by('cislo')
         return context
 
     def post(self, request, *args, **kwargs):
