@@ -166,6 +166,8 @@ class Soutez(models.Model):
             if admin:
                 cache_val = cache.get('act_soutez_admin')
                 soutez = Soutez.objects.get(pk=cache_val) if cache_val is not None else None
+                if soutez is None:
+                    return None
                 return soutez if soutez.zahajena is not None and soutez.aktivni else None
             return None
         if now() < (soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)):
