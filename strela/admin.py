@@ -2,6 +2,7 @@ from django.contrib import admin
 from django import forms
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
+from django.db.models.query import QuerySet
 from django.utils.timezone import now
 from sequences import get_next_value
 
@@ -56,7 +57,7 @@ class TymChangeForm(forms.ModelForm):
         jmeno = self.cleaned_data["jmeno"]
         # kontrola na unikátnost jména
         login = make_tym_login(jmeno)
-        if Tym.objects.filter(login=login).count() > 0:
+        if Tym.objects.filter(login=login).count() > 1:
            raise forms.ValidationError('Login týmu není jedinečný, musíte zvolit jiné jméno týmu.')
         return jmeno
 
@@ -177,7 +178,7 @@ class SoutezAdmin(admin.ModelAdmin):
         
 class TymSoutezOtazkaAdmin(admin.ModelAdmin):
     list_display = ('tym', 'soutez','otazka','cisloVSoutezi','stav','odpoved','bazar') 
-    search_fields = ('cisloVSoutezi', 'tym')
+    search_fields = ('cisloVSoutezi', 'tym__jmeno')
 
 class OtazkaAdmin(admin.ModelAdmin):
     list_display = ('typ', 'pk','stav','obtiznost','vyhodnoceni')
@@ -185,7 +186,7 @@ class OtazkaAdmin(admin.ModelAdmin):
 
 class LogTableAdmin(admin.ModelAdmin):
     list_display = ('tym', 'otazka','soutez','staryStav','novyStav', 'cas')
-    search_fields = ('tym', 'otazka')
+    search_fields = ('tym__jmeno', 'otazka__pk')
 
 class EmailInfoAdmin(admin.ModelAdmin):
     list_display = ('odeslal','soutez','kdy')

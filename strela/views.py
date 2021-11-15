@@ -760,16 +760,13 @@ class HraIndexJsAPI(TemplateView):
             n_nove_qs = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=0).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
             n_bazar_qs = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=5).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
             n_nove:dict[str, int] = { 'A' : 0 }
-            n_bazar:dict[str, int] = {}
+            n_bazar:dict[str, int] = { 'A' : 0 }
             for nqs in n_nove_qs:
                 n_nove.update({ nqs['otazka__obtiznost'] : int(nqs['total']) })
             for nqs in n_bazar_qs:
                 n_bazar.update({ nqs['otazka__obtiznost'] : int(nqs['total']) })
 
-            try:
-                n_nove['A'] += n_bazar['A']
-            except KeyError:
-                pass
+            n_nove['A'] += n_bazar['A']
 
             context["n_otazek_nove_slozitost"] = n_nove
             context["n_otazek_bazar_slozitost"] = n_bazar
@@ -879,7 +876,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         formular:Tym_Soutez_Otazka = form.save(commit=False)
         if formular.stav not in (1, 6, 7):
-            messages.warning(self.request, f'Tato otázka nejde odevzdat, jelokož je ve stavu {formular.get_stav_display()}')
+            messages.warning(self.request, f'Tato otázka nejde odevzdat, jelikož je ve stavu {formular.get_stav_display()}')
             return HttpResponseRedirect(self.get_success_url())
         if 'b-kontrola' in form.data:
             if self.object.otazka.vyhodnoceni == 0:
