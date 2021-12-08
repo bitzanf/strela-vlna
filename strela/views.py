@@ -1289,3 +1289,6 @@ class Clock(TemplateView):
         context = super().get_context_data(**kwargs)
         context['soutez'] = Soutez.get_aktivni()
         return context
+
+class QRClanek(TemplateView):
+    template_name = 'strela/qr_clanek.html'
