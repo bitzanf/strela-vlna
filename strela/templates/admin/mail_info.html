@@ -1,11 +1,20 @@
 {% extends "admin_base.html" %}
 
+{% block extrajs %}
+{{ form.media }}
+<script>
+  //$(".tox-promotion-link").remove(); // otravne tlacitko na placenou verzi
+  //setTimeout($(".tox-promotion-link").remove, 5000)
+</script>
+<script src="/static/js/TinyMCE_addons.js"></script>
+{% endblock %}
+
 {% block title %}Odeslání emailu týmům{% endblock %}
 {% block content %}
 {% load bootstrap4 %}
 <form method="post" action="{% url 'admin_email_info' 1%}" autocomplete="off">
 {% csrf_token %}
-<div class="card bg-light" style="width:600px">
+<div class="card bg-light">
   <div class="card-header bg-info font-weight-bold">
     Text informačního emailu
   </div>

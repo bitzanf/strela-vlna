@@ -1,11 +1,12 @@
 from django import forms
 from .models import Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
 from django.utils.timezone import now
-from bootstrap_datepicker_plus import DateTimePickerInput
+from bootstrap_datepicker_plus.widgets import DateTimePickerInput   # 9.10.2022 - nefunguje, opraveno na .widgets
 from django.forms import HiddenInput, DecimalField
 from .lookups import SkolaLookup
 from selectable.forms.widgets import AutoCompleteSelectWidget
 from . utils import make_tym_login
+from tinymce.widgets import TinyMCE
 
 import re
 
@@ -15,8 +16,16 @@ class RegistraceForm(forms.ModelForm):
     class Meta:
         model = Tym
         fields = ['jmeno','skola','email','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
-        labels = {"jmeno" : "Jméno týmu", "skola" : "Škola", "email" : "Email", "soutezici1" : "Soutěžící 1",
-                "soutezici2" : "Soutěžící 2", "soutezici3" : "Soutěžící 3", "soutezici4" : "Soutěžící 4", "soutezici5" : "Soutěžící 5",}
+        labels = {
+            "jmeno": "Jméno týmu",
+            "skola": "Škola",
+            "email": "Email",
+            "soutezici1": "Soutěžící 1",
+            "soutezici2": "Soutěžící 2",
+            "soutezici3": "Soutěžící 3",
+            "soutezici4": "Soutěžící 4",
+            "soutezici5": "Soutěžící 5"
+        }
         widgets = {
             'skola': AutoCompleteSelectWidget(SkolaLookup)
         }
@@ -65,7 +74,9 @@ class HraOtazkaForm(forms.ModelForm):
     class Meta:
         model = Tym_Soutez_Otazka
         fields = ['odpoved']
-        labels = {"odpoved" : "Vaše odpověď" }
+        labels = {
+            "odpoved": "Vaše odpověď"
+        }
 
     def clean(self):
         super().clean()
@@ -89,6 +100,9 @@ class AdminNovaSoutezForm(forms.ModelForm):
                      "locale": "cs",
                  }),
 
+        }
+        labels = {
+            'prezencni': 'Prezenční'
         }
 
     def clean(self):
@@ -125,6 +139,13 @@ class AdminNovaOtazka(forms.ModelForm):
     class Meta:
         model = Otazka
         fields = ['typ','vyhodnoceni','obtiznost','zadani','reseni']
+        labels = {
+            'typ': 'Typ',
+            'vyhodnoceni': 'Vyhodnocení',
+            'obtiznost': 'Obtížnost',
+            'zadani': 'Zadání',
+            'reseni': 'Řešení'
+        }
 
     def clean_zadani(self):
         zadani = self.cleaned_data["zadani"]
@@ -148,6 +169,17 @@ class AdminEmailInfo(forms.ModelForm):
     class Meta:
         model = EmailInfo
         fields = ['zprava']
+        widgets = {
+            'zprava': TinyMCE(mce_attrs = {
+                'image_title': True,
+                'automatic_uploads': True,
+                'file_picker_inputs': 'image',
+                'file_picker_callback': 'TinyMCE_filepicker_callback'
+            })
+        }
+        labels = {
+            'zprava': 'Zpráva'
+        }
 
 class AdminSoutezMoneyForm(forms.Form):
     soutez: Soutez

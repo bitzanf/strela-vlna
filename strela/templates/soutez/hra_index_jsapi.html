@@ -20,7 +20,9 @@
                     <span class="badge badge-success font-weight-bold ml-2" title = "Počet vyřešených otázek"><h2>{{ o_vyreseno }}</h2> Vyřešeno otázek</span>
                     <span class="badge badge-primary font-weight-bold ml-2" title = "Zakoupené a dosud neřešené otázky"><h2>{{ o_zakoupene }}</h2> Zakoupené </span>
                     <span class="badge badge-danger font-weight-bold ml-2" title = "Špatně vyřešené otázky a otázky na technické podpoře"><h2>{{ o_problemy }}</h2> Problémové</span>
-                    <span class="badge badge-{{ color }} ml-auto" id="cas"><h3>{{ konec }}</h3>Konec soutěže</span>
+                    
+                    <button type="button" data-toggle="modal" data-target="#modalCenik" class="btn btn-secondary font-weight-bold ml-auto">CENÍK</button>
+                    <span class="badge badge-{{ color }} ml-2" id="cas"><h3>{{ konec }}</h3>Konec soutěže</span>
                 </div>
 
                 <div class="row mb-5">

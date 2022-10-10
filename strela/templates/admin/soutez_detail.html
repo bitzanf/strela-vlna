@@ -2,6 +2,11 @@
 {% block title %} Detail Soutěže {% endblock %}
 {% block extrajs %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css">
+    <script language="javascript">
+        $(function () {
+            $('[data-toggle="tooltip"]').tooltip()
+        })
+    </script>
 {% endblock %}
 
 {% block content %}
@@ -92,7 +97,7 @@
         {% buttons %}
             <button type="submit" class="btn btn-primary" name="b-otazky" {% if soutez.rok != akt_rok %} disabled {% endif %}>Přidat otázky do soutěže</button>
             {% if soutez.prezencni == 'O' %}
-                <button type="submit" class="btn btn-success" name="b-start" {% if soutez.rok != akt_rok or soutez.get_aktivni or soutez.registrace or soutez.zahajena %} disabled {% endif %}>Spustit Soutěž</button>
+                <button type="submit" class="btn btn-success" name="b-start" {% if not spustitelna %} disabled data-toggle="tooltip" data-placement="right"  title="{{nespustitelna_proc}}" {% endif %}>Spustit Soutěž</button>
             {% elif soutez.rok != akt_rok or soutez.registrace %}
                 <a href="#" class="btn btn-success disabled">Přiřadit výsledky</a>
             {% else %}

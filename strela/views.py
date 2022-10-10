@@ -1,3 +1,6 @@
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from django import forms
 from django.utils.timezone import now
 from django.utils.text import slugify
 from django.shortcuts import redirect
@@ -21,13 +24,11 @@ from sequences import get_next_value
 from . models import Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
 from . utils import eval_registration, tex_escape, make_tym_login, auto_kontrola_odpovedi
 from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
-from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ
+from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
 
-from django import forms
+import lxml.html as lxhtml
 
-import re
-import datetime
-import logging
+import re, datetime, logging
 logger = logging.getLogger(__name__)
 
 
@@ -258,6 +259,14 @@ class KontrolaOdpovediDetail(LoginRequiredMixin, PermissionRequiredMixin, Update
                 .format(self.request.user,self.object.tym, formular))
             LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.soutez, staryStav=2, novyStav=7) 
             formular.save()
+
+        if 'b-podpora' in form.data:
+            formular.send_to_brazil(formular.tym, 0)
+            logger.info("Uživatel {} zkontroloval týmu {} otázku {}. Otázka byla odeslána na technickou podporu."
+                .format(self.request.user,self.object.tym, formular))
+            LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.soutez, staryStav=2, novyStav=4)
+            formular.save()
+
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -366,6 +375,22 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context['form'] = self.get_form
         context['akt_rok'] = now().year
         context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object).order_by('cislo')
+
+        context['spustitelna'] = True
+        context['nespustitelna_proc'] = ''
+
+        if self.object.rok != now().year:
+            context['spustitelna'] = False
+            context['nespustitelna_proc'] = 'Nelze spustit soutěž, která není letošní.'
+        elif self.object.get_aktivni():
+            context['spustitelna'] = False
+            context['nespustitelna_proc'] = 'Nelze spustit již probíhající soutěž.'
+        elif self.object.registrace:
+            context['spustitelna'] = False
+            context['nespustitelna_proc'] = 'Nelze spustit soutěž, do které je ještě možné se registrovat.'
+        elif self.object.zahajena:
+            context['spustitelna'] = False
+            context['nespustitelna_proc'] = 'Nelze spustit soutěž, která již byla spuštěna.'
         return context
 
     def post(self, request, *args, **kwargs):
@@ -560,7 +585,7 @@ class RegistraceIndex(CreateView):
                     if m is not None:
                         pk = int(m.group('pk'))
                         if s.pk == pk:
-                            Tym_Soutez.objects.create(tym=formular, soutez=s, cislo=get_next_value(f'ts_{s.pk}'))
+                            Tym_Soutez.objects.create(tym=formular, soutez=s, cislo=get_next_value(f'ts_{s.pk}'), penize=TYM_DEFAULT_MONEY)
                             soutez_list.append(s.pretty_name(True))
         except Exception as e:
             logger.error("Došlo k chybě {} při registraci týmu {} z IP {}".format(e, formular ,self.request.META['REMOTE_ADDR']))
@@ -642,14 +667,38 @@ class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin,CreateView):
         prijemci = list(set(Tym.objects.filter(id__in = Tym_Soutez.objects.filter(soutez=soutez).values_list('tym__id',flat=True)).values_list('email',flat=True)))
         ok_list = []
         err_list = []
+        attachments = []
+
+        msg = lxhtml.fromstring(formular.zprava)
+        imgs = msg.cssselect('img')
+        for img in imgs:
+            src = img.get('src')
+            mime, content = src.split(',')
+            mime = mime.split(':')[1].split(';')[0]
+
+            # att_id = get_random_string(8)
+            att = MIMEBase(*(mime.split('/')))
+            att.set_payload(content)
+            att.add_header('Content-Transfer-Encoding', 'base64')
+            att['Content-Disposition'] = f'attachment; filename={img.get("title")}'
+            # att.add_header('Content-ID', att_id)
+            
+            attachments.append(att)
+            # img.set('src', f'cid:{att_id}')   # gmail nepodporuje vlozene obrazky
+            img.drop_tree()
+
         for p in prijemci:
             email = EmailMessage(
-                subject = "Informace k soutěži {}".format(soutez),
-                body = formular.zprava,
-                to = (p,) 
+                subject = f"Informace k soutěži {soutez}",
+                to = [p]
             )
+
+            email.content_subtype = 'related'
+            email.attach(MIMEText(lxhtml.tostring(msg), 'html', 'utf-8'))
+            for att in attachments:
+                email.attach(att)
+
             try:
-                email.content_subtype = 'html'
                 email.send()
                 logger.info("Byl odeslán informační email o soutěži {} na adresu {}.".format(soutez, p))
                 ok_list.append(p)
@@ -803,6 +852,13 @@ class HraIndex(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context["is_user_tym"] = isinstance(self.request.user, Tym)
         context["soutez_valid"] = False
+        
+        cenik = []
+        d_diff = dict(FLAGDIFF)
+        for o, c in CENIK.items():
+            cenik.append((d_diff[o], c))
+        context["cenik"] = cenik
+
         try:
             context["aktivni_soutez"] = Soutez.get_aktivni()
             if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
@@ -852,6 +908,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             context["was_otazka_podpora"] = self.object.bylaPodpora
             context["max_penize"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.soutez).penize
             context["soutez_valid"] = True if self.object.soutez.prezencni == 'O' else False
+            context["bazar_cena"] = CENIK[self.object.otazka.obtiznost][2]
             if self.object.soutez.aktivni:
                 context["aktivni_soutez"] = True
             else:             
@@ -901,6 +958,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                     formular.odpoved = form.cleaned_data.get("odpoved")
                     logger.info("Tým {0} odevzdal otázku {1}, na kterou odpověděl CHYBNĚ ({2}).".format(self.request.user, formular.otazka, formular.odpoved))
                     formular.save()
+                    return HttpResponseRedirect(self.request.path_info)
             else:
                 messages.info(self.request, "Otázka byla odeslána k hodnocení")
                 LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=2)
@@ -914,14 +972,8 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
         elif 'b-podpora' in form.data:
             LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=4)
             formular.odpoved = form.cleaned_data.get("odpoved")
-            formular.stav = 4
-            formular.bylaPodpora = True
-            try:
-                konverzace = ChatConvos.objects.get(otazka=formular, tym=self.request.user)
-                konverzace.uzavreno = False
-            except Exception:
-                konverzace = ChatConvos.objects.create(otazka=formular, tym=self.request.user, uzavreno=False)
-            konverzace.sazka = form.cleaned_data.get('sazka')
+
+            konverzace = formular.send_to_brazil(self.request.user, form.cleaned_data.get('sazka'))
             team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
             if konverzace.sazka > CENIK[self.object.otazka.obtiznost][0] * 2:
                 konverzace.sazka = CENIK[self.object.otazka.obtiznost][0] * 2
@@ -933,6 +985,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                 konverzace.sazka = team.penize  #tym nema dost penez, vsadi se vsechno
                 team.penize = 0
                 messages.warning(self.request, "Nedostatečná výše aktiv týmu, bylo vsazeno {} DC".format(konverzace.sazka))
+
             logger.info("Tým {} odeslal otázku {} na technickou podporu.".format(self.request.user, formular.otazka))
             if konverzace.sazka > 0:
                 logger.info("Tým {} vsadil {} DC na otázku {}.".format(self.request.user, konverzace.sazka, formular.otazka))

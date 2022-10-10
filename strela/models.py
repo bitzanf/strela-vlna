@@ -70,6 +70,8 @@ CENIK = {
     "E": (100, 210, 50)
 }
 
+TYM_DEFAULT_MONEY = 40
+
 class Skola(models.Model):
     nazev:str = models.CharField(max_length=200)
 
@@ -220,7 +222,7 @@ class Soutez(models.Model):
 class Tym_Soutez(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy")
     soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, related_name="souteze")
-    penize:int = models.PositiveIntegerField(default=40)
+    penize:int = models.PositiveIntegerField(default=0)
     cislo:int = models.PositiveIntegerField(default=0)
 
     def __str__(self):
@@ -327,6 +329,7 @@ class Tym_Soutez_Otazka(models.Model):
     def sell(self):
         self.sell_unsafe()
 
+    # pro ucely hromadneho prodavani v 1 transakci
     def sell_unsafe(self):
         if self.bazar: return
         LogTable.objects.create(tym=self.tym, otazka=self.otazka, soutez=self.soutez, staryStav=self.stav, novyStav=5)
@@ -349,6 +352,20 @@ class Tym_Soutez_Otazka(models.Model):
         otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 6, 7], soutez=soutez)
         for o in otazky:
             o.sell_unsafe()
+
+    # pošle otázku na technickou podporu
+    @transaction.atomic
+    def send_to_brazil(self, tym, sazka:int = 0):
+        self.stav = 4
+        self.bylaPodpora = True
+        try:
+            konverzace = ChatConvos.objects.get(otazka=self, tym=tym)
+            konverzace.uzavreno = False
+        except Exception:
+            konverzace = ChatConvos.objects.create(otazka=self, tym=self.tym, uzavreno=False)
+        konverzace.sazka = sazka
+        konverzace.save()
+        return konverzace
     
     
 

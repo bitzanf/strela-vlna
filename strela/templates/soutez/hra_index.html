@@ -46,5 +46,51 @@
             autorefresh();
         });
     </script>
+    <style>
+        .cenik_table > th {
+            padding-left: 15px;
+            padding-right: 15px
+        }
+
+        .cenik_table > td {
+            text-align: center;
+        }
+    </style>
+
+    <div class="modal fade" id="modalCenik" tabindex="-1" role="dialog" aria-labelledby="modalCenikLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalCenikLabel">Ceník</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <table>
+                        <tr class="cenik_table">
+                            <th>Obtížnost</th>
+                            <th>Nákup</th>
+                            <th>Zisk</th>
+                            <th>Bazar</th>
+                        </tr>
+                        {% for o, c in cenik %}
+                        <tr style="background-color: {% if forloop.counter|divisibleby:2 %} lightgray {% else %} white {% endif %}" class="cenik_table">
+                            <td>{{o}}</td>
+                            {% for v in c %}
+                            <td>{{v}} DC<span class="equalsignshift">=</span></td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </table>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Zavřít</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
    {% include "latexify/scripts.html" %}
 {% endblock %}

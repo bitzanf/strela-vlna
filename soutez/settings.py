@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django_tex',
     'bootstrap_datepicker_plus',
     'selectable',
+    'tinymce',
     'strela',
   
 ]
@@ -141,7 +142,7 @@ INTERNAL_IPS = [
     '127.0.0.1',
     '195.113.62.220',
     '90.179.35.68',
-    '193.165.97.240'
+    '193.165.96.34'
 ]
 
 CACHES = {
@@ -199,6 +200,31 @@ LOGGING = {
         },
     },
 }
+
+
+# django-tinymce je zastaraly, proto se musi pouzit manualne selector namisto spravnejsiho target
+# pro inicializaci editoru
+# init skript vyuziva elements, coz je nepodporovany option v TinyMCE v6
+TINYMCE_JS_URL = os.path.join(STATIC_URL, 'js/tinymce/tinymce.min.js')
+TINYMCE_JS_ROOT = os.path.join(STATIC_URL, 'js/tinymce')
+TINYMCE_DEFAULT_CONFIG = {
+    # "height": "320px",
+    # "width": "960px",
+    "menubar": "edit view insert format tools table help",
+    "plugins": "advlist autolink lists link image charmap preview anchor searchreplace visualblocks code "
+               "fullscreen insertdatetime media table code help wordcount",
+    "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
+               "aligncenter alignright alignjustify | outdent indent | numlist bullist checklist | forecolor "
+               "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
+               "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
+               "a11ycheck ltr rtl | showcomments addcomment code",
+               "custom_undo_redo_levels": 10,
+    "language": "cs",  # To force a specific language instead of the Django current language.
+    "selector": ".tinymce"
+}
+TINYMCE_SPELLCHECKER = False
+TINYMCE_COMPRESSOR = False
+
 
 try:
     from . settings_internal import *

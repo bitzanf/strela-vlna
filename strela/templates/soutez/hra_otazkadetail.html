@@ -124,7 +124,7 @@
             {% if object.bazar %}   
             <button type="submit" class="btn btn-secondary" disabled>Prodat do bazaru</button>
             {% else %}
-            <button type="submit" class="btn btn-warning" name="b-bazar">Prodat do bazaru</button>
+            <button type="submit" class="btn btn-warning" name="b-bazar">Prodat do bazaru <b>({{ bazar_cena }} DC<span class="equalsignshift">=</span>)</b></button>
             {% endif %}
         {% endbuttons %}
       </div>  

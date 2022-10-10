@@ -144,7 +144,10 @@ def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool
     rx = re.compile(r'^[\d\+\-\*/,.\(\)]+$')
     if rx.match(odpoved) and rx.match(reseni):
         try:
-            return abs(1 - (eval(odpoved.replace(',', '.')) / eval(reseni.replace(',', '.')))) < odchylka
+            # return abs(1 - (eval(odpoved.replace(',', '.')) / eval(reseni.replace(',', '.')))) < odchylka
+            nReseni = eval(reseni.replace(',', '.'))
+            nOdpoved = eval(odpoved.replace(',', '.'))
+            return abs(nReseni - nOdpoved) < nReseni * odchylka
         except Exception:
             return False
     else:

@@ -21,6 +21,7 @@ from strela import url_handlers
 urlpatterns = [
     path('__debug__/', include(debug_toolbar.urls)),
     path('dbadmin/', admin.site.urls),
+    #path('tinymce/', include('tinymce.urls')),
     path('', include("strela.urls")),
 #    path('soutez/', include("strela.urls")),
 #    path("", url_handlers.index_handler),
