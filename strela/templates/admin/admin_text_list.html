@@ -1,0 +1,32 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Informační texty{% endblock %}
+
+{% block extrajs %}
+<script type="text/javascript">
+$(document).ready(function() {
+  $(".clickable-row").click(function() {
+    window.location = $(this).data("href");
+})});
+</script>
+<style>
+tr:hover {
+  background-color: lightgray;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+{% load strela_tags %}
+
+<table class="table">
+  {% for t in texty %}
+    <tr class="clickable-row" data-href="{% url 'admin_text' t.key %}" style="cursor: pointer;">
+      <td>{{ mapping|list_index:t.key }}</td>
+      <td>{{ t.val|striptags|truncatechars:200 }}</td>
+    </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}

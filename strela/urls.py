@@ -53,6 +53,9 @@ urlpatterns = [
     path("admin/podpora/", views.PodporaChatList.as_view(), name="podpora_list"),
     path("admin/podpora/<int:pk>", views.PodporaChat.as_view(), name="podpora_chat"),
 
+    path("admin/infotext/", views.AdminTextList.as_view(), name="admin_text_list"),
+    path("admin/infotext/<str:key>", views.AdminText.as_view(), name="admin_text"),
+
 #jsapi
     path("jsapi/hra_index", views.HraIndexJsAPI.as_view(), name="hra_index_jsapi"),
     path("jsapi/hra_vysledky", views.SoutezVysledkyJsAPI.as_view(), name="hra_vysledky_jsapi"),

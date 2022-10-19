@@ -6,7 +6,7 @@ from django.db.models.query import QuerySet
 from django.utils.timezone import now
 from sequences import get_next_value
 
-from . models import EmailInfo, Skola, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, ChatMsgs, ChatConvos
+from . models import EmailInfo, KeyValueStore, Skola, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, ChatMsgs, ChatConvos
 from . utils import make_tym_login
 
 class TymCreationForm(forms.ModelForm):
@@ -204,4 +204,4 @@ admin.site.register(LogTable, LogTableAdmin)
 admin.site.register(EmailInfo, EmailInfoAdmin)
 admin.site.register(ChatConvos, ChatConvosAdmin)
 admin.site.register(ChatMsgs)
-
+admin.site.register(KeyValueStore)

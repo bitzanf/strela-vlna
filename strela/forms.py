@@ -1,5 +1,5 @@
 from django import forms
-from .models import Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
+from .models import KeyValueStore, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
 from django.utils.timezone import now
 from bootstrap_datepicker_plus.widgets import DateTimePickerInput   # 9.10.2022 - nefunguje, opraveno na .widgets
 from django.forms import HiddenInput, DecimalField
@@ -198,3 +198,23 @@ class AdminSoutezMoneyForm(forms.Form):
         super().clean()
         if self.soutez.prezencni == 'O':
             raise forms.ValidationError("Body lze přiřadit jen prezeční soutěži")
+
+class AdminTextForm(forms.Form):
+    infotext_key:str
+
+    def __init__(self, *args, **kwargs):
+        self.infotext_key = kwargs.pop('key')
+        super().__init__(*args, **kwargs)
+
+        self.fields = {
+            'infotext': forms.CharField(
+                widget=TinyMCE(
+                    mce_attrs= {
+                        'content_css': '/static/style.css',
+                        'setup': 'TinyMCE_setup'
+                    }
+                ),
+                label='',
+                initial=KeyValueStore.objects.get(key=self.infotext_key).val
+            )
+        }

@@ -21,9 +21,9 @@ from django.http import HttpResponseRedirect
 from django.utils.crypto import get_random_string
 from sequences import get_next_value
 
-from . models import Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
+from . models import KeyValueStore, Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
 from . utils import eval_registration, tex_escape, make_tym_login, auto_kontrola_odpovedi
-from . forms import RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
+from . forms import AdminTextForm, RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
 from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
 
 import lxml.html as lxhtml
@@ -642,7 +642,7 @@ class RegistracePotvrzeni(TemplateView):
         return context
 
 
-class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin,CreateView):
+class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     template_name = "admin/mail_info.html"
     permission_required = ['strela.novasoutez','strela.adminsouteze']
     login_url = reverse_lazy("admin_login")
@@ -652,6 +652,7 @@ class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin,CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         self.request.session.update({'soutez-email':self.kwargs['soutez']})
+        context['pk'] = self.kwargs['soutez']
         return context
 
     def form_valid(self, form):
@@ -673,8 +674,13 @@ class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin,CreateView):
         imgs = msg.cssselect('img')
         for img in imgs:
             src = img.get('src')
-            mime, content = src.split(',')
-            mime = mime.split(':')[1].split(';')[0]
+            scheme, zbytek = src.split(':')
+
+            # pokud je obrazek z internetu (a ne base64), neni treba nic delat
+            if scheme != 'data': continue
+
+            mime, content = zbytek.split(',')
+            mime = mime.split(';')[0]
 
             # att_id = get_random_string(8)
             att = MIMEBase(*(mime.split('/')))
@@ -705,7 +711,7 @@ class EmailInfo(LoginRequiredMixin, PermissionRequiredMixin,CreateView):
 
             except Exception as e:
                 logger.error("Došlo k chybě {} při odesílání informačního emailu o soutěži {} na adresu {}. ".format(e, soutez, p))
-                err_list.append(p)
+                err_list.append(f"{p} ({e})")
 
         formular.save()
         if ok_list:
@@ -921,7 +927,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
         if self.object.bylaPodpora:
             self.request.session['chat_redirect_target'] = reverse_lazy('otazka-detail', args=(self.object.pk,))
             try:
-                konverzace = ChatConvos.objects.get(otazka=self.object, tym=self.request.user)
+                konverzace = ChatConvos.objects.get(otazka=self.object, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.soutez))
                 self.request.session['id_konverzace'] = konverzace.pk
                 context['sazka_tymu'] = konverzace.sazka
             except ChatConvos.DoesNotExist:
@@ -1055,9 +1061,9 @@ class ConvoListJsAPI(ListView):
 
     def get_queryset(self):
         if isinstance(self.request.user, Tym):
-            return ChatConvos.objects.filter(Q(otazka__soutez=Soutez.get_aktivni())|Q(otazka=None), tym=self.request.user)
+            return ChatConvos.objects.filter(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
         elif self.request.user.has_perm('strela.podpora'):
-            return ChatConvos.objects.filter(Q(otazka__soutez=Soutez.get_aktivni(admin=True)) | Q(otazka=None))
+            return ChatConvos.objects.filter(tym__soutez=Soutez.get_aktivni(admin=True))
         else:
             return ChatConvos.objects.none()
 
@@ -1081,7 +1087,7 @@ class ChatListJsAPI(TemplateView):
 
         if isinstance(self.request.user, Tym):
             try:
-                convo = ChatConvos.objects.get(id=convo_id, tym=self.request.user)
+                convo = ChatConvos.objects.get(id=convo_id, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
             except ChatConvos.DoesNotExist:
                 context['chat_errormsg'] = "Tato konverzace buď neexistuje anebo k ní nemáte přístup"
                 return context
@@ -1132,7 +1138,7 @@ class ChatSend(FormMixin, View):
         if isinstance(self.request.user, Tym):
             smer = 0
             try:
-                convo = ChatConvos.objects.get(id=convo_id, tym=self.request.user)
+                convo = ChatConvos.objects.get(id=convo_id, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
             except ChatConvos.DoesNotExist:
                 messages.error(self.request, "Konverzace nebyla nalezena")
                 return HttpResponseRedirect(reverse_lazy('herni_server'))
@@ -1299,11 +1305,11 @@ class TymChatList(LoginRequiredMixin, FormMixin, TemplateView):
     def form_valid(self, form):
         if 'b-kontaktovat' in form.data:
             try:
-                konverzace:ChatConvos = ChatConvos.objects.get(tym=self.request.user, otazka=None)
+                konverzace:ChatConvos = ChatConvos.objects.get(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()), otazka=None)
                 konverzace.uzavreno = False
                 konverzace.save()
             except ChatConvos.DoesNotExist:
-                konverzace = ChatConvos.objects.create(tym=self.request.user, uzavreno=False)
+                konverzace = ChatConvos.objects.create(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()), uzavreno=False)
             return HttpResponseRedirect(reverse_lazy('tym_chat', args=(konverzace.pk,)))
         return HttpResponseRedirect(reverse_lazy('tym_chat_list'))
 
@@ -1324,7 +1330,7 @@ class TymChat(LoginRequiredMixin, TemplateView):
         self.request.session['id_konverzace'] = id_konverzace
         self.request.session['chat_redirect_target'] = reverse_lazy('tym_chat', args=(id_konverzace,))
         try:
-            convo:ChatConvos = ChatConvos.objects.get(pk=id_konverzace, tym=self.request.user)
+            convo:ChatConvos = ChatConvos.objects.get(pk=id_konverzace, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=aktivni_soutez))
             context['sazka_tymu'] = convo.sazka
             context['vyreseno'] = convo.uzavreno
             context['otazka'] = convo.otazka
@@ -1345,3 +1351,52 @@ class Clock(TemplateView):
 
 class QRClanek(TemplateView):
     template_name = 'strela/qr_clanek.html'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        try:
+            ctx['clanek'] = KeyValueStore.objects.get(key='qr_clanek').val
+        except KeyValueStore.DoesNotExist:
+            messages.error(self.request, 'Článek nenalezen')
+
+        return ctx
+
+class AdminTextList(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
+    permission_required = 'strela.adminsouteze'   
+    template_name = 'admin/admin_text_list.html'
+    login_url = reverse_lazy("admin_login")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        
+        ctx['texty'] = KeyValueStore.get_all_static()
+        ctx['mapping'] = KeyValueStore.key_mapping
+        return ctx
+
+class AdminText(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, TemplateView):
+    permission_required = 'strela.adminsouteze'   
+    template_name = 'admin/admin_text.html'
+    login_url = reverse_lazy("admin_login")
+    form_class = AdminTextForm
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form()
+        if form.is_valid():
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+    
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs.update(self.kwargs)
+        return kwargs
+
+    def form_valid(self, form):
+        try:
+            infotext = KeyValueStore.objects.get(key=form.infotext_key)
+            infotext.val = form.data['infotext']
+            infotext.save()
+        except Exception as e:
+            messages.error(self.request, f'Chyba při uložení informačního textu ({e})')
+
+        return HttpResponseRedirect(reverse_lazy('admin_text_list'))

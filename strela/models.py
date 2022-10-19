@@ -1,4 +1,5 @@
 from __future__ import annotations
+from tabnanny import verbose
 
 from django.db import models, transaction
 from django.core.cache import cache
@@ -430,7 +431,7 @@ class EmailInfo(models.Model):
 
 class ChatConvos(models.Model):
     otazka:Tym_Soutez_Otazka = models.ForeignKey(Tym_Soutez_Otazka, on_delete=models.CASCADE, null=True)
-    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE)
+    tym:Tym_Soutez = models.ForeignKey(Tym_Soutez, on_delete=models.CASCADE)
     uzavreno:bool = models.BooleanField(default=False)
     uznano:bool = models.BooleanField(default=False)
     sazka:int = models.PositiveIntegerField(default=0)
@@ -456,3 +457,29 @@ class ChatMsgs(models.Model):
             return "{} ({}) -> {}".format(self.konverzace.tym, self.konverzace.otazka, self.text)
         else:
             return "{} ({}) <- {}".format(self.konverzace.tym, self.konverzace.otazka, self.text)
+
+class KeyValueStore(models.Model):
+    key:str = models.CharField(max_length=16, primary_key=True, verbose_name='Klíč')
+    val:str = models.TextField(blank=True, verbose_name='Hodnota')
+
+    class Meta:
+        verbose_name = \
+        verbose_name_plural = 'Key-Value DB'
+
+    def __str__(self):
+        if self.key in self.key_mapping:
+            return f'{self.key_mapping[self.key]}: {self.val}'
+
+        return f'{self.key}: {self.val}'
+
+    @classmethod
+    def get_all_static(cls):
+        return cls.objects.filter(key__in=cls.static_keys)
+
+    static_keys = [
+        'qr_clanek'
+    ]
+
+    key_mapping = {
+        'qr_clanek': 'QR Článek'
+    }

@@ -1,0 +1,53 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Detail otázky{% endblock %}
+
+{% block extrajs %}
+{{ form.media }}
+<script src="/static/js/TinyMCE_addons.js"></script>
+<script>
+var dirty = false;
+var submitting = false;
+
+function TinyMCE_setup(ed) {
+  ed.on('change', function(e) {
+    dirty = true;
+  });
+}
+
+function setSubmitting() {
+  submitting = true;
+}
+
+$(document).ready(function() {
+  window.addEventListener("beforeunload", function(e) {
+    if (submitting || !dirty) return undefined;
+    
+    let msg = "Máte neuložené změny v textu!";
+    (e || window.event).returnValue = msg;
+    return msg;
+  });
+});
+
+</script>
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+
+<form method="post" autocomplete="off" onsubmit="setSubmitting();">
+{% csrf_token %}
+{% if 'strela.adminsouteze' not in perms %}
+  <fieldset disabled>
+    {% bootstrap_form form %}
+  </fieldset>
+{% else %}
+  {% bootstrap_form form %}
+{% endif %}
+
+{% buttons %}
+    <button type="submit" class="btn btn-success" name="b-ulozit">Uložit</button>
+{% endbuttons %}
+</form>
+
+{% endblock %}

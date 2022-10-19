@@ -27,6 +27,7 @@
 {% url "admin-otazka-detail" 0 as detail_otazky__ %}
 {% url "admin-otazka-delete" 0 as smazat_otazku__ %}
 {% url "nova_otazka" as nova_otazka__ %}
+{% url "admin_text_list" as text_list__ %}
 
 <nav class="navbar navbar-expand-sm bg-success navbar-dark" style="font-size:20px">
         <a class="navbar-brand" href="{% url "admin_index" %}">
@@ -77,12 +78,18 @@
                             {% else %}
                                 <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Technická podpora</a></li>
                             {% endif %}
+                            {% if 'strela.adminsouteze' in perms %}
+                                <li class="nav-item"><a class="nav-link pl-0 {% if text_list__ in request.path %} active {% endif %}" href="{% url "admin_text_list" %}">Informační texty</a></li>
+                            {% else %}
+                                <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Informační texty</a></li>
+                            {% endif %}
                         {% else %}
                             <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Stav soutěže</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Otázky</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Kontrola odpovědí</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Soutěže</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Technická podpora</a></li>
+                            <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Informační texty</a></li>
                         {% endif %}
                         </ul>
                     </div>
