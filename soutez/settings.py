@@ -15,7 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-STRELA_VERZE = '1.9.2'
+STRELA_VERZE = '1.9.3'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -208,16 +208,13 @@ LOGGING = {
 TINYMCE_JS_URL = os.path.join(STATIC_URL, 'js/tinymce/tinymce.min.js')
 TINYMCE_JS_ROOT = os.path.join(STATIC_URL, 'js/tinymce')
 TINYMCE_DEFAULT_CONFIG = {
-    # "height": "320px",
-    # "width": "960px",
     "menubar": "edit view insert format tools table help",
     "plugins": "advlist autolink lists link image charmap preview anchor searchreplace visualblocks code "
                "fullscreen insertdatetime media table code help wordcount",
     "toolbar": "undo redo | bold italic underline strikethrough | fontselect fontsizeselect formatselect | alignleft "
                "aligncenter alignright alignjustify | outdent indent | numlist bullist checklist | forecolor "
-               "backcolor casechange permanentpen formatpainter removeformat | pagebreak | charmap emoticons | "
-               "fullscreen  preview save print | insertfile image media pageembed template link anchor codesample | "
-               "a11ycheck ltr rtl | showcomments addcomment code",
+               "backcolor casechange permanentpen formatpainter | pagebreak | charmap emoticons | "
+               "fullscreen  preview save | insertfile image media pageembed template link anchor codesample",
                "custom_undo_redo_levels": 10,
     "language": "cs",  # To force a specific language instead of the Django current language.
     "selector": ".tinymce"

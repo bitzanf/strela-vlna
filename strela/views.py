@@ -24,7 +24,7 @@ from sequences import get_next_value
 from . models import KeyValueStore, Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
 from . utils import eval_registration, tex_escape, make_tym_login, auto_kontrola_odpovedi
 from . forms import AdminTextForm, RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
-from . models import FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
+from . constants import FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
 
 import lxml.html as lxhtml
 
@@ -727,6 +727,10 @@ class SoutezIndex(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(SoutezIndex, self).get_context_data(**kwargs)
         context.update(eval_registration(self))
+        try:
+            context['infotext'] = KeyValueStore.objects.get(key='soutez_index').val
+        except KeyValueStore.DoesNotExist:
+            messages.error(self.request, 'Článek nenalezen')
         return context
 
 
@@ -769,6 +773,10 @@ class SoutezPravidla(TemplateView):
     def get_context_data(self, **kwargs):
         context = super(SoutezPravidla, self).get_context_data(**kwargs)
         context.update(eval_registration(self))
+        try:
+            context['infotext'] = KeyValueStore.objects.get(key='soutez_pravidla').val
+        except KeyValueStore.DoesNotExist:
+            messages.error(self.request, 'Článek nenalezen')
         return context
 
 

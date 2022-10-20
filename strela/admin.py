@@ -194,6 +194,15 @@ class EmailInfoAdmin(admin.ModelAdmin):
 class ChatConvosAdmin(admin.ModelAdmin):
     list_display = ('id', 'tym', 'otazka', 'sazka')
 
+class KeyValueStoreAdmin(admin.ModelAdmin):
+    list_display = ('key', 'trunc_val')
+
+    def trunc_val(self, obj):
+        if len(obj.val) > 256:
+            return obj.val[:256] + '...'
+        else:
+            return obj.val
+
 admin.site.register(Skola)
 admin.site.register(Tym,TymAdmin)
 admin.site.register(Soutez, SoutezAdmin)
@@ -204,4 +213,4 @@ admin.site.register(LogTable, LogTableAdmin)
 admin.site.register(EmailInfo, EmailInfoAdmin)
 admin.site.register(ChatConvos, ChatConvosAdmin)
 admin.site.register(ChatMsgs)
-admin.site.register(KeyValueStore)
+admin.site.register(KeyValueStore, KeyValueStoreAdmin)

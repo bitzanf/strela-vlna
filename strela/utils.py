@@ -1,6 +1,5 @@
 from django.core.cache import cache
-from django.db.models.query import QuerySet
-from . models import Soutez, Skola, Otazka, Tym_Soutez_Otazka
+from . models import Soutez, Skola
 from django.utils.timezone import now
 from django.contrib import messages
 from django.utils.text import slugify

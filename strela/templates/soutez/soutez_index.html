@@ -4,34 +4,15 @@
 {% block content %}
 {% load bootstrap4 %}
 
+{{ infotext|safe }}
 
-<div class="title">
-       <h2>Pražská střela, Dopplerova vlna</h2>
- </div>
- <div class="faq">
-        <div class="otazka"><p><b>Rádi soutěžíte v matematice nebo fyzice? </b><br></p></div>
-         <p>Pokud ano, je tato soutěž určena přesně pro Vás!<br></p><hr>
-         <div class="otazka"><p><b>O co jde?</b><br></p></div>
-         <p>Jedná se o dvě soutěže: Dopplerovu vlnu (fyzika) a Pražskou střelu (matematika). Letos jsme pro vás jako obvykle nachystali soustu zajímavých úloh, nad kterými se zapotíte. <br></p>
-         <!--<p>Za standadních podmínek se jedná o dvě soutěže: Dopplerovu vlnu (fyzika) a Pražskou střelu (matematika).<br>
-         Letos jsme ale bohužel byli okolnostmi donuceni vše zredukovat pouze na jednu soutěž.<br>
-         Tou soutěží bude Dopplerova střela, ve které si žáci procvičí své znalosti z matematiky i fyziky.<br></p>-->
-         <hr>
-         <div class="otazka"><p><b>Kdy?</b><br></p></div>
-         <p>Pražská střela se odehraje <b>9.11.2021</b>, Dopplerova vlna <b>16.11.2021</b><br> </p>
-         <!--<p>Dopplerova střela se odehraje 16.12.2020<br></p>-->
-         <hr> 
-         <div class="otazka"><p><b>Pro koho je soutěž koncipována? </b><br></p></div>
-         <p>Soutěž je připravena pro žáky 8. a 9. ročníků základních škol. <br>  </p>  
-         <hr>
-        </div>
-<div>  
-       <p>Letos vypsané soutěže:</p>
-       {% for r in soutez %}
-       <b> {{ r.pretty_name }} ({{ r.rok }})</b><br>
-       {% empty %}
-       <b>Žádné soutěže nebyly ještě letos vypsány</b>
-       {% endfor %}
+<hr><div>
+  <p>Letos vypsané soutěže:</p>
+  {% for r in soutez %}
+  <b> {{ r.pretty_name }} ({{ r.rok }})</b><br>
+  {% empty %}
+  <b>Žádné soutěže nebyly ještě letos vypsány</b>
+  {% endfor %}
 </div>
 <hr>
 {% endblock %}

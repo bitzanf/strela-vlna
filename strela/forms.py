@@ -210,8 +210,9 @@ class AdminTextForm(forms.Form):
             'infotext': forms.CharField(
                 widget=TinyMCE(
                     mce_attrs= {
-                        'content_css': '/static/style.css',
-                        'setup': 'TinyMCE_setup'
+                        'content_css': '/static/css/style.css',
+                        'setup': 'TinyMCE_setup',
+                        'height': '512'
                     }
                 ),
                 label='',

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from email.policy import default
 from tabnanny import verbose
 
 from django.db import models, transaction
@@ -10,77 +11,28 @@ import datetime
 import logging
 logger = logging.getLogger(__name__)
 
-FLAGMF = (
-    ("M", "Matematika"),
-    ("F", "Fyzika"),
-    ("X", "Matematika & Fyzika"),
-)
-
-FLAGPREZENCNI = (
-    ("P", "Prezenční"),
-    ("O", "Online")
-)
-
-FLAGDIFF = (
-    ("A", "Nejlehčí"),
-    ("B", "Lehká"),
-    ("C", "Střední"),
-    ("D", "Těžká"),
-    ("E", "Nejtěžší")
-)
-
-FLAGSTATE = (
-    (0, "Nová"),
-    (1, "Schválená"),
-    (2, "Chybná")
-)
-
-FLAGSOUTEZSTATE = (
-    (0, "Nová"),
-    (1, "Zakoupená"),
-    (2, "Odevzdaná"),
-    (3, "Vyřešená"),
-    (4, "Technická podpora"),
-    (5, "V bazaru"),
-    (6, "Zakoupená z bazaru"),
-    (7, "Chybně zodpovězená")
-)
-
-FLAGEVAL = (
-    (0, "Vyhodnotit automaticky"),
-    (1, "Vyhodnotit ručně")
-)
-
-FLAGNAME = {
-    "M": "Pražská střela",
-    "F": "Doplerova vlna",
-    "X": "Pražská vlna",
-}
-
-OTAZKASOUTEZ = {
-    "M": ("M",),
-    "F": ("F",),
-    "X": ("M","F","X"),
-}
-
-CENIK = {
-    "A": (20, 30, 20), #nakup, zisk, bazar
-    "B": (50, 70, 20),
-    "C": (70, 110, 30),
-    "D": (80, 160, 40),
-    "E": (100, 210, 50)
-}
-
-TYM_DEFAULT_MONEY = 40
+from . constants import *
 
 class Skola(models.Model):
     nazev:str = models.CharField(max_length=200)
+    kratky_nazev:str = models.CharField(max_length=200)
+
+    email1:str = models.EmailField(max_length=256)
+    email2:str = models.EmailField(max_length=256)
+    
+    region:str = models.CharField(max_length=1)
+    kraj:str = models.CharField(max_length=1)
+    okres:str = models.CharField(max_length=1)
 
     def __str__(self):
         return self.nazev
 
     def get_queryset(self):
         return Skola.objects.all().order_by("-nazev")
+
+    @property
+    def uzemi(self):
+        return 'CZ0' + self.region + self.kraj + self.okres
 
     class Meta:
         verbose_name="Škola"
@@ -103,7 +55,7 @@ class Tym(AbstractBaseUser):
     login:str = models.CharField(max_length=50, unique=True)
     jmeno:str = models.CharField(max_length=200)
     skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, related_name='tymy')
-    email:str = models.EmailField(max_length = 200)
+    email:str = models.EmailField(max_length=256)
     soutezici1:str = models.CharField(max_length=100)
     soutezici2:str = models.CharField(max_length=100, blank=True)
     soutezici3:str = models.CharField(max_length=100, blank=True)
@@ -477,9 +429,13 @@ class KeyValueStore(models.Model):
         return cls.objects.filter(key__in=cls.static_keys)
 
     static_keys = [
-        'qr_clanek'
+        'qr_clanek',
+        'soutez_index',
+        'soutez_pravidla'
     ]
 
     key_mapping = {
-        'qr_clanek': 'QR Článek'
+        'qr_clanek': 'QR Článek',
+        'soutez_index': 'Index soutěže',
+        'soutez_pravidla': 'Pravidla soutěže'
     }
