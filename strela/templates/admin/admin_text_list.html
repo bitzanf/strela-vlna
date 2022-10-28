@@ -24,7 +24,7 @@ tr:hover {
   {% for t in texty %}
     <tr class="clickable-row" data-href="{% url 'admin_text' t.key %}" style="cursor: pointer;">
       <td>{{ mapping|list_index:t.key }}</td>
-      <td>{{ t.val|striptags|truncatechars:200 }}</td>
+      <td>{{ t.val|truncatechars:200 }}</td>
     </tr>
   {% endfor %}
 </table>

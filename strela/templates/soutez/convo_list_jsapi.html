@@ -14,9 +14,9 @@
             <tr class="clickable-row" data-href="{{ id }}" style="cursor: pointer;">
                 {% if canSeeId == True %}
                 <td>{{ o.tym }}</td>
-                <td>{{ o.otazka.otazka.typ }}-{{ o.otazka.cisloVSoutezi }} [{{ o.otazka.otazka.id }}]</td>
+                <td>{{ o.otazka.otazka.otazka.typ }}-{{ o.otazka.otazka.otazka.id }} [{{ o.otazka.otazka.cisloVSoutezi }}]</td>
                 {% else %}
-                <td>{{ o.otazka.otazka.typ }}-{{ o.otazka.cisloVSoutezi }}</td>
+                <td>{{ o.otazka.otazka.otazka.typ }}-{{ o.otazka.otazka.cisloVSoutezi }}</td>
                 {% endif %}
                 <td>{% if o.uzavreno == True %}
                     <span class="badge badge-success">Uzavřeno</span>

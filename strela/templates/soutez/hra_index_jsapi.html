@@ -97,9 +97,9 @@
                             <tbody>
                                 {% for o in otazky %}
                                     <tr class="clickable-row" data-href="{% url 'otazka-detail' o.pk %}" style="cursor: pointer;">
-                                        <td>{{ o.otazka.get_typ_display }}</td>   
-                                        <td>{% latexify o.otazka.zadani parse_math=True %}</td>
-                                        <td>{{o.otazka.obtiznost}} - {{ o.otazka.get_obtiznost_display }}</td>
+                                        <td>{{ o.otazka.otazka.get_typ_display }}</td>   
+                                        <td>{% latexify o.otazka.otazka.zadani parse_math=True %}</td>
+                                        <td>{{o.otazka.otazka.obtiznost}} - {{ o.otazka.otazka.get_obtiznost_display }}</td>
                                         <td> 
                                             {% if   o.stav == 1 %} <span class="badge badge-primary"> {{ o.get_stav_display }} </span>
                                             {% elif o.stav == 2 or o.stav == 4 %} <span class="badge badge-warning"> {{ o.get_stav_display }} </span>

@@ -15,7 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-STRELA_VERZE = '1.9.3'
+STRELA_VERZE = '2.0.0'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -25,7 +25,7 @@ DEBUG = True
 #DEBUG = False
 
 ALLOWED_HOSTS = ['89.203.249.42']
-
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Application definition
 
@@ -45,8 +45,7 @@ INSTALLED_APPS = [
     'bootstrap_datepicker_plus',
     'selectable',
     'tinymce',
-    'strela',
-  
+    'strela'
 ]
 
 MIDDLEWARE = [

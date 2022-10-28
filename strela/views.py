@@ -1,5 +1,6 @@
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
+from time import time
 from django import forms
 from django.utils.timezone import now
 from django.utils.text import slugify
@@ -19,9 +20,10 @@ from django.db.models import Q, Count
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.utils.crypto import get_random_string
+from django.core.cache import cache
 from sequences import get_next_value
 
-from . models import KeyValueStore, Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs
+from . models import KeyValueStore, Soutez_Otazka, Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs, Skola
 from . utils import eval_registration, tex_escape, make_tym_login, auto_kontrola_odpovedi
 from . forms import AdminTextForm, RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
 from . constants import FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
@@ -37,32 +39,82 @@ class AdministraceIndex(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
     permission_required = 'strela.adminsouteze'
     login_url = reverse_lazy("admin_login")
 
+    def cache_otazky(self, soutez:Soutez):
+        skoly = Tym_Soutez.objects.filter(soutez=soutez).values_list('tym__skola', flat=True).distinct()
+        otazky = Soutez_Otazka.objects.filter(soutez=soutez)
+
+        stavy = []
+        for skola in skoly:
+            skola_obj = Skola.objects.get(id=skola)
+            stavy_obtiznosti = [{}, {}, {}, {}, {}, {}, {}, {}]
+            otazky_skoly = Tym_Soutez_Otazka.objects.filter(skola=skola, otazka__in=otazky)
+            dostupne = otazky.exclude(
+                id__in=otazky_skoly.values_list('otazka', flat=True)
+            )
+
+            stavy_list = [0, 0, 0, 0, 0, 0, 0, 0]
+
+            stavy_list[0] = dostupne.count()
+            for o in dostupne.values('otazka__obtiznost').annotate(count=Count('otazka__obtiznost')):
+                stavy_obtiznosti[0].update({o['otazka__obtiznost']:o['count']})
+
+
+            for o in otazky_skoly:
+                if not o.otazka.otazka.obtiznost in stavy_obtiznosti[o.stav].keys():
+                    stavy_obtiznosti[o.stav].update({o.otazka.otazka.obtiznost:1})
+                else:
+                    stavy_obtiznosti[o.stav][o.otazka.otazka.obtiznost] += 1
+
+            for i in range(1, len(stavy_list)):
+                stavy_list[i] = sum(stavy_obtiznosti[i].values())
+            
+            if stavy_list[0] == 0:
+                messages.warning(self.request, f'Škole {skola_obj} došly otázky!')
+
+            stavy.append((
+                (
+                    skola_obj.kratce,
+                    Tym_Soutez.objects.filter(
+                        soutez=soutez,
+                        tym__skola=skola).count()
+                ),
+                zip(
+                    stavy_list,
+                    [', '.join([f'{k}:{v}' for k, v in o.items()]) for o in stavy_obtiznosti]
+                )
+            ))
+
+        cache.set('admin_soutez_otazky', stavy, timeout=60)
+        return stavy
+
     def get_context_data(self, **kwargs):
-        context = super(AdministraceIndex, self).get_context_data(**kwargs)
-        context["aktivni_soutez"] = Soutez.get_aktivni(admin=True)
-        if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
-        context["n_otazek_celkem"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).count()
-        stavy = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).values('stav').annotate(total=Count('stav'))
-        s = [0, 0, 0, 0, 0, 0, 0, 0]
-        for stav in stavy:
-            s[stav["stav"]] = stav["total"]
-        context["n_otazek_stav_count"] = s
-        context["n_otazek_nove_slozitost"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=0).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
-        context["n_otazek_bazar_slozitost"] = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=5).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
-        context["n_otazek_chybne"] = Otazka.objects.filter(stav=2, id__in=Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).values_list('otazka__id', flat=True)).count()
+        ctx = super().get_context_data(**kwargs)
+        soutez = Soutez.get_aktivni(admin=True)
+        otazky_souteze = Tym_Soutez_Otazka.objects.filter(otazka__soutez=soutez)
+        ctx['n_otazek_celkem'] = Soutez_Otazka.objects.filter(soutez=soutez).count()
+        ctx['n_otazek_podpora'] = otazky_souteze.filter(stav=4).count()
+        ctx['n_otazek_kontrola'] = otazky_souteze.filter(stav=2).count()
+        ctx['n_otazek_vyreseno'] = otazky_souteze.filter(stav=3).count()
+        ctx['n_otazek_chybne'] = Otazka.objects.filter(stav=2, id__in=Soutez_Otazka.objects.filter(soutez=soutez).values_list('otazka__id', flat=True)).count()
+        ctx['n_tymu'] = Tym_Soutez.objects.filter(soutez=soutez).count()
 
-        context["n_tymu"] = Tym_Soutez.objects.filter(soutez=context["aktivni_soutez"]).count()
+        stavy = cache.get('admin_soutez_otazky')
+        if not stavy: stavy = self.cache_otazky(soutez)
+        ctx['n_otazek_skoly'] = stavy
 
-        if context["aktivni_soutez"] != None:
-            konec = context["aktivni_soutez"].zahajena + datetime.timedelta(minutes = context["aktivni_soutez"].delkam)
+        ctx['aktivni_soutez'] = soutez
+        if soutez is not None: ctx['soutez_valid'] = True if soutez.prezencni == 'O' else False
+
+        if soutez != None:
+            konec = soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)
             if konec - now() < datetime.timedelta(minutes=5):
-                context["color"] = "danger"
+                ctx["color"] = "danger"
             elif konec - now() < datetime.timedelta(minutes=15):
-                context["color"] = "warning"
+                ctx["color"] = "warning"
             else:
-                context["color"] = "secondary"
-            context["konec"] = konec.strftime('%H:%M')
-        return context
+                ctx["color"] = "secondary"
+            ctx["konec"] = konec.strftime('%H:%M')
+        return ctx
     
 
 class NovaOtazka(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -229,24 +281,24 @@ class KontrolaOdpovediDetail(LoginRequiredMixin, PermissionRequiredMixin, Update
             return HttpResponseRedirect(self.get_success_url())
 
         try:
-            team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
+            team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.otazka.soutez)
         except Tym_Soutez.DoesNotExist as e:
             logger.error("Nepodařilo se nalézt tým v soutěži {}".format(e))
             messages.error(self.request, "Nepodařilo se nalézt tým v soutěži {}".format(e))
             return HttpResponseRedirect(self.get_success_url())
 
         if 'chybnaotazka' in form.data:
-            formular.otazka.stav = 2
-            formular.otazka.save()
+            formular.otazka.otazka.stav = 2
+            formular.otazka.otazka.save()
 
         if 'b-spravne' in form.data:
             formular.stav = 3
             try:
-                team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
-                team.penize += CENIK[self.object.otazka.obtiznost][1]
+                team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.otazka.soutez)
+                team.penize += CENIK[self.object.otazka.otazka.obtiznost][1]
                 logger.info("Uživatel {} zkontroloval týmu {} otázku {}. Otázka byla zodpovězena SPRÁVNĚ, týmu bylo přičteno {} DC"
-                    .format(self.request.user,self.object.tym, formular, CENIK[self.object.otazka.obtiznost][1]))
-                LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.soutez, staryStav=2, novyStav=3)    
+                    .format(self.request.user,self.object.tym, formular, CENIK[self.object.otazka.otazka.obtiznost][1]))
+                LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.otazka.soutez, staryStav=2, novyStav=3)    
                 formular.save()
                 team.save()
             except Tym_Soutez.DoesNotExist as e:
@@ -257,14 +309,14 @@ class KontrolaOdpovediDetail(LoginRequiredMixin, PermissionRequiredMixin, Update
             formular.stav = 7
             logger.info("Uživatel {} zkontroloval týmu {} otázku {}. Otázka byla zodpovězena ŠPATNĚ."
                 .format(self.request.user,self.object.tym, formular))
-            LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.soutez, staryStav=2, novyStav=7) 
+            LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.otazka.soutez, staryStav=2, novyStav=7) 
             formular.save()
 
         if 'b-podpora' in form.data:
             formular.send_to_brazil(formular.tym, 0)
             logger.info("Uživatel {} zkontroloval týmu {} otázku {}. Otázka byla odeslána na technickou podporu."
                 .format(self.request.user,self.object.tym, formular))
-            LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.soutez, staryStav=2, novyStav=4)
+            LogTable.objects.create(tym=self.object.tym, otazka=formular.otazka, soutez=self.object.otazka.soutez, staryStav=2, novyStav=4)
             formular.save()
 
         return HttpResponseRedirect(self.get_success_url())
@@ -305,7 +357,7 @@ class KontrolaOdpovediJsAPI(PermissionRequiredMixin, ListView):
         return context
     
     def get_queryset(self):
-        return Tym_Soutez_Otazka.objects.filter(soutez=Soutez.get_aktivni(admin=True), stav=2)
+        return Tym_Soutez_Otazka.objects.filter(otazka__soutez=Soutez.get_aktivni(admin=True), stav=2)
 
 
 class AdminSoutez(LoginRequiredMixin, PermissionRequiredMixin, ListView):
@@ -354,23 +406,29 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context = super(AdminSoutezDetail, self).get_context_data(**kwargs)
         # vybere všechny otázky přiřazené k dané soutěži, seskupí je podle obtížnosti
         # a sečte počty otázek v jednotlivých obtížnostech
-        context["v_soutezi"] = Tym_Soutez_Otazka.objects.filter(soutez=self.object).order_by('otazka__obtiznost') \
+        context["v_soutezi"] = Soutez_Otazka.objects.filter(soutez=self.object).order_by('otazka__obtiznost') \
             .values('otazka__obtiznost') \
             .annotate(total=Count('otazka__obtiznost'))
         # vezme součty obtížností z předchozího dotazu, udělá z nich list hodnot součtů a sečte je dohromady.
         context["v_soutezi_celkem"] = sum(context["v_soutezi"].values_list('total', flat=True))
-        # vezme všechny schválené otázky použitelné v soutěži daného typu
-        qs = Otazka.objects.filter(stav=1, typ__in=OTAZKASOUTEZ[self.object.typ])
-        # ze seznamu otázek vyloučí otázky již použité v této soutěži nebo (letošních a loňských soutěžích v jiném stavu než 'nová')
-        # otázky seskupí podle obtížnosti a sečte počty otázek v jednotlivých obtížnostech
-        context["dostupne"] = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
-                .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
-                .values_list('otazka__id', flat=True))).order_by('obtiznost') \
-            .values('obtiznost') \
-            .annotate(total=Count('obtiznost'))
+        # vezmeme všechny schválené otázky použitelné v soutěži daného typu
+        # a vyloučíme všechny otázky použité v předešlých 2 letech
+        qs = Otazka.objects.filter(stav=1, typ__in=OTAZKASOUTEZ[self.object.typ]).exclude(
+            Q(id__in=Tym_Soutez_Otazka.objects.filter(
+                Q(otazka__soutez__rok__in=(now().year-1,now().year))
+              | Q(otazka__soutez=self.object)
+            ).values_list('otazka__otazka__id', flat=True))
+
+          | Q(id__in=Soutez_Otazka.objects.filter(
+                soutez=self.object
+            ).values_list('otazka__id', flat=True))
+        )
+        # spočítáme všechny dostupné otázky a seskupíme podle obtížností
+        context['dostupne'] = qs.values('obtiznost').annotate(total=Count('obtiznost'))
+
         # vezme počty otázek v jednotlivých obtížnostech z minulého dotazu,
         # udělá z nich list a sečte je dohromady
-        context["dostupne_celkem"] = sum(context["dostupne"].values_list('total',flat=True))    
+        context["dostupne_celkem"] = sum(context["dostupne"].values_list('total',flat=True))
         context["prihlaseno"]=Tym_Soutez.objects.filter(soutez=self.object).count()
         context['form'] = self.get_form
         context['akt_rok'] = now().year
@@ -413,16 +471,26 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
                 ss = 0
                 for obtiznost in FLAGDIFF:
                     try:
-                        qs = Otazka.objects.filter(stav=1, obtiznost=obtiznost[0])
                         # vezme všechny schválené otázky použitelné v soutěži daného typu
-                        qs = qs.filter(typ__in=OTAZKASOUTEZ[self.object.typ])
-                        qs = qs.exclude(id__in=list(Tym_Soutez_Otazka.objects
-                                    .filter((Q(soutez__rok__in=(now().year-1,now().year)) & ~Q(stav=0)) | Q(soutez=self.object))
-                                    .values_list('otazka__id', flat=True)))
+                        qs = Otazka.objects.filter(stav=1, obtiznost=obtiznost[0], typ__in=OTAZKASOUTEZ[self.object.typ]).exclude(
+                            Q(id__in=Tym_Soutez_Otazka.objects.filter(
+                                Q(otazka__soutez__rok__in=(now().year-1,now().year))
+                              | Q(otazka__soutez=self.object)
+                            ).values_list('otazka__otazka__id', flat=True))
+
+                          | Q(id__in=Soutez_Otazka.objects.filter(
+                                soutez=self.object
+                            ).values_list('otazka__id', flat=True))
+                        )
+
                         qs = qs.order_by('?')[:pocet_otazek]
                         for o in qs:
-                            Tym_Soutez_Otazka.objects.create(soutez=self.object, otazka=o, stav=0,
-                                cisloVSoutezi=get_next_value("rok-{}-soutez-{}-id-{}".format(self.object.rok,self.object.zamereni,self.object.pk)))
+                            Soutez_Otazka.objects.create(
+                                soutez=self.object,
+                                otazka=o,
+                                cisloVSoutezi=get_next_value("rok-{}-soutez-{}-id-{}".format(self.object.rok,self.object.zamereni,self.object.pk))
+                            )
+
                         pridano = qs.count()
                         s += "{}:{} ".format(obtiznost[0],pridano)
                         ss += pridano
@@ -600,8 +668,14 @@ class RegistraceIndex(CreateView):
             'login': formular.login,
             'souteze': soutez_list,
             'tym': formular,
-            'skola': formular.skola.nazev
+            'skola': formular.skola.nazev,
+            'infotext': ''
         }
+        try:
+            context['infotext'] = KeyValueStore.objects.get(key='registrace_info').val
+        except KeyValueStore.DoesNotExist:
+            messages.error('Nenalezen záznam o informačním textu!')
+
         # finta - abychom nepřenášeli login a heslo mimo server mezi View,
         # vygenerujeme si náhodný klíč a pod tímto klíčem uložíme údaje do session
         # session je uložena v Memcached
@@ -814,20 +888,28 @@ class HraIndexJsAPI(TemplateView):
             context["aktivni_soutez"] = Soutez.get_aktivni()
             if context["aktivni_soutez"] is not None: context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
             context["tym"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=context["aktivni_soutez"]) 
-            context["otazky"] = Tym_Soutez_Otazka.objects.filter(tym=self.request.user, soutez=context["aktivni_soutez"]).exclude(otazka__id__in=Otazka.objects.filter(stav=2).values_list('id', flat=True))
+            context["otazky"] = Tym_Soutez_Otazka.objects.filter(tym=self.request.user, otazka__soutez=context["aktivni_soutez"]).exclude(otazka__otazka__id__in=Otazka.objects.filter(stav=2).values_list('id', flat=True))
             context["o_vyreseno"] = context["otazky"].filter(stav=3).count()
             context["o_zakoupene"] = context["otazky"].filter(Q(stav=1)|Q(stav=6)).count()
             context["o_problemy"] = context["otazky"].filter(Q(stav=4)|Q(stav=7)).count()
             context["is_user_tym"] = isinstance(self.request.user, Tym)
 
-            n_nove_qs = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=0).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
-            n_bazar_qs = Tym_Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"], stav=5).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+            n_nove_qs = Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).exclude(
+                id__in=Tym_Soutez_Otazka.objects.filter(skola=context['tym'].tym.skola).values_list('otazka', flat=True)
+            ).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+
+            n_bazar_qs = Tym_Soutez_Otazka.objects.filter(
+                Q(otazka__soutez=context["aktivni_soutez"])
+                    & ((Q(stav=5) & ~Q(skola=context['tym'].tym.skola))
+                    | Q(id__in=Tym_Soutez_Otazka.objects.filter(skola=context['tym'].tym.skola, stav=5).values_list('id', flat=True)))
+            ).values('otazka__otazka__obtiznost').annotate(total=Count('otazka__otazka__obtiznost'))
+
             n_nove:dict[str, int] = { 'A' : 0 }
             n_bazar:dict[str, int] = { 'A' : 0 }
             for nqs in n_nove_qs:
                 n_nove.update({ nqs['otazka__obtiznost'] : int(nqs['total']) })
             for nqs in n_bazar_qs:
-                n_bazar.update({ nqs['otazka__obtiznost'] : int(nqs['total']) })
+                n_bazar.update({ nqs['otazka__otazka__obtiznost'] : int(nqs['total']) })
 
             n_nove['A'] += n_bazar['A']
 
@@ -920,10 +1002,10 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             context["tym"] = self.request.user
             context["is_user_tym"] = isinstance(self.request.user, Tym)
             context["was_otazka_podpora"] = self.object.bylaPodpora
-            context["max_penize"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.soutez).penize
-            context["soutez_valid"] = True if self.object.soutez.prezencni == 'O' else False
-            context["bazar_cena"] = CENIK[self.object.otazka.obtiznost][2]
-            if self.object.soutez.aktivni:
+            context["max_penize"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.otazka.soutez).penize
+            context["soutez_valid"] = True if self.object.otazka.soutez.prezencni == 'O' else False
+            context["bazar_cena"] = CENIK[self.object.otazka.otazka.obtiznost][2]
+            if self.object.otazka.soutez.aktivni:
                 context["aktivni_soutez"] = True
             else:             
                 messages.warning(self.request, "Není spuštěna žádná soutěž")
@@ -935,7 +1017,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
         if self.object.bylaPodpora:
             self.request.session['chat_redirect_target'] = reverse_lazy('otazka-detail', args=(self.object.pk,))
             try:
-                konverzace = ChatConvos.objects.get(otazka=self.object, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.soutez))
+                konverzace = ChatConvos.objects.get(otazka=self.object, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.otazka.soutez))
                 self.request.session['id_konverzace'] = konverzace.pk
                 context['sazka_tymu'] = konverzace.sazka
             except ChatConvos.DoesNotExist:
@@ -950,23 +1032,23 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             messages.warning(self.request, f'Tato otázka nejde odevzdat, jelikož je ve stavu {formular.get_stav_display()}')
             return HttpResponseRedirect(self.get_success_url())
         if 'b-kontrola' in form.data:
-            if self.object.otazka.vyhodnoceni == 0:
-                if auto_kontrola_odpovedi(form.cleaned_data.get("odpoved"), self.object.otazka.reseni):
-                    LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=3)
+            if self.object.otazka.otazka.vyhodnoceni == 0:
+                if auto_kontrola_odpovedi(form.cleaned_data.get("odpoved"), self.object.otazka.otazka.reseni):
+                    LogTable.objects.create(tym=formular.tym, otazka=formular.otazka.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=3)
                     messages.info(self.request, "Otázka byla vyřešena")
                     formular.stav = 3
                     formular.odpoved = form.cleaned_data.get("odpoved")
                     try:
-                        team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
+                        team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.otazka.soutez)
                         team.penize += CENIK[self.object.otazka.obtiznost][1]
-                        logger.info("Tým {0} odevzdal otázku {1}, kterou zodpověděl SPRÁVNĚ ({3}) a získal {2} DC.".format(self.request.user, formular.otazka, CENIK[self.object.otazka.obtiznost][1], formular.odpoved))
+                        logger.info("Tým {0} odevzdal otázku {1}, kterou zodpověděl SPRÁVNĚ ({3}) a získal {2} DC.".format(self.request.user, formular.otazka, CENIK[self.object.otazka.otazka.obtiznost][1], formular.odpoved))
                         formular.save()
                         team.save()
                     except Tym_Soutez.DoesNotExist as e:
                         logger.error(f"Nepodařilo se nalézt tým v soutěži {e}")
                         messages.error(self.request, f"Nepodařilo se nalézt tým v soutěži {e}")
                 else:
-                    LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=7)
+                    LogTable.objects.create(tym=formular.tym, otazka=formular.otazka.otazka, soutez=formular.otazka.soutez, staryStav=formular.stav, novyStav=7)
                     messages.info(self.request, "Otázka byla zodpovězena špatně")
                     formular.stav = 7
                     formular.odpoved = form.cleaned_data.get("odpoved")
@@ -975,7 +1057,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                     return HttpResponseRedirect(self.request.path_info)
             else:
                 messages.info(self.request, "Otázka byla odeslána k hodnocení")
-                LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=2)
+                LogTable.objects.create(tym=formular.tym, otazka=formular.otazka.otazka, soutez=formular.otazka.soutez, staryStav=formular.stav, novyStav=2)
                 formular.stav = 2
                 formular.odpoved = form.cleaned_data.get("odpoved")
                 logger.info("Tým {} odevzdal otázku {} k ruční kontrole".format(self.request.user, formular.otazka))
@@ -984,13 +1066,13 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             formular.sell()
             messages.info(self.request, "Otázka byla prodána do bazaru")
         elif 'b-podpora' in form.data:
-            LogTable.objects.create(tym=formular.tym, otazka=formular.otazka, soutez=formular.soutez, staryStav=formular.stav, novyStav=4)
+            LogTable.objects.create(tym=formular.tym, otazka=formular.otazka.otazka, soutez=formular.otazka.soutez, staryStav=formular.stav, novyStav=4)
             formular.odpoved = form.cleaned_data.get("odpoved")
 
             konverzace = formular.send_to_brazil(self.request.user, form.cleaned_data.get('sazka'))
-            team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.soutez)
-            if konverzace.sazka > CENIK[self.object.otazka.obtiznost][0] * 2:
-                konverzace.sazka = CENIK[self.object.otazka.obtiznost][0] * 2
+            team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.otazka.soutez)
+            if konverzace.sazka > CENIK[self.object.otazka.otazka.obtiznost][0] * 2:
+                konverzace.sazka = CENIK[self.object.otazka.otazka.obtiznost][0] * 2
                 messages.warning(self.request, "Byla překročena maximální výše sázky")
             if team.penize >= konverzace.sazka:
                 team.penize -= konverzace.sazka
@@ -1218,12 +1300,12 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
         
         if konverzace.otazka != None:
             if 'chybnaotazka' in form.data:
-                konverzace.otazka.otazka.stav = 2
-                konverzace.otazka.otazka.save()
+                konverzace.otazka.otazka.otazka.stav = 2
+                konverzace.otazka.otazka.otazka.save()
                 if isinstance(konverzace.sazka, int):
                     team.penize += konverzace.sazka * 2
                     logger.info("Uživatel {} uznal týmu {} otázku {}. Otázka byla zadána špatně, tým vyhrál sázku {} DC"
-                        .format(self.request.user,konverzace.tym, konverzace.otazka, konverzace.sazka * 2))
+                        .format(self.request.user,konverzace.tym, konverzace.otazka.otazka, konverzace.sazka * 2))
                 
         if 'b-uznat' in form.data:
             if konverzace.otazka != None:
@@ -1231,9 +1313,9 @@ class PodporaChatList(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Te
                 konverzace.uzavreno = True
                 konverzace.uznano = True
                 
-                team.penize += CENIK[konverzace.otazka.otazka.obtiznost][1]
+                team.penize += CENIK[konverzace.otazka.otazka.otazka.obtiznost][1]
                 logger.info("Uživatel {} uznal týmu {} otázku {}. Otázka byla zodpovězena SPRÁVNĚ, týmu bylo přičteno {} DC"
-                    .format(self.request.user,konverzace.tym, konverzace.otazka, CENIK[konverzace.otazka.otazka.obtiznost][1]))
+                    .format(self.request.user,konverzace.tym, konverzace.otazka.otazka, CENIK[konverzace.otazka.otazka.otazka.obtiznost][1]))
                 
                 LogTable.objects.create(tym=konverzace.tym, otazka=konverzace.otazka.otazka, soutez=aktivni_soutez, staryStav=4, novyStav=3)
                 messages.info(self.request, "Řešení týmu bylo uznáno") 
@@ -1279,7 +1361,8 @@ class PodporaChat(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
             convo = ChatConvos.objects.get(pk=id_konverzace)
             context['sazka_tymu'] = convo.sazka
             context['vyreseno'] = convo.uzavreno
-            context['otazka'] = convo.otazka
+            context['otazka'] = convo.otazka.otazka
+            context['odpoved'] = convo.otazka.odpoved
             context['uznano'] = convo.uznano
         except Exception as e:
             messages.error(self.request, "Chyba {}".format(e))
@@ -1377,7 +1460,17 @@ class AdminTextList(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         
-        ctx['texty'] = KeyValueStore.get_all_static()
+        texty = []
+        for text in KeyValueStore.get_all_static():
+            try: txt = lxhtml.fromstring(text.val).text_content()
+            except: txt = ''
+
+            texty.append({
+                'key': text.key,
+                'val': txt
+            })
+        
+        ctx['texty'] = texty
         ctx['mapping'] = KeyValueStore.key_mapping
         return ctx
 
@@ -1408,3 +1501,8 @@ class AdminText(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Template
             messages.error(self.request, f'Chyba při uložení informačního textu ({e})')
 
         return HttpResponseRedirect(reverse_lazy('admin_text_list'))
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx.update({'nazev': KeyValueStore.key_mapping[kwargs['key']]})
+        return ctx

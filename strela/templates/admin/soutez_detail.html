@@ -95,7 +95,7 @@
         <span class="font-weight-bold">Přidání otázek do soutěže:</span>
         {% bootstrap_form form %}
         {% buttons %}
-            <button type="submit" class="btn btn-primary" name="b-otazky" {% if soutez.rok != akt_rok %} disabled {% endif %}>Přidat otázky do soutěže</button>
+            <button type="submit" class="btn btn-primary" name="b-otazky" {% if soutez.rok != akt_rok or dostupne_celkem == 0 %} disabled {% endif %}>Přidat otázky do soutěže</button>
             {% if soutez.prezencni == 'O' %}
                 <button type="submit" class="btn btn-success" name="b-start" {% if not spustitelna %} disabled data-toggle="tooltip" data-placement="right"  title="{{nespustitelna_proc}}" {% endif %}>Spustit Soutěž</button>
             {% elif soutez.rok != akt_rok or soutez.registrace %}

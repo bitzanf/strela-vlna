@@ -154,15 +154,15 @@ class AdminNovaOtazka(forms.ModelForm):
         return zadani
 
 class AdminZalozSoutezForm(forms.Form):
-    pocet_otazek = forms.IntegerField(label="Počet otázek", required=False, initial=20, min_value=0)
+    pocet_otazek = forms.IntegerField(label="Počet otázek na obtížnost", required=False, initial=20, min_value=0)
 
     def clean_pocet_otazek(self):
         pocet_otazek = self.cleaned_data.get('pocet_otazek')
         if 'b-otazky' in self.data:
             if pocet_otazek == 0:
                 raise forms.ValidationError("Nepřidáváte žádnou otázku.")
-            if pocet_otazek % 5 != 0:
-                raise forms.ValidationError("Počet otázek není dělitelný počtem kategorií.") 
+            # if pocet_otazek % 5 != 0:
+            #     raise forms.ValidationError("Počet otázek není dělitelný počtem kategorií.") 
         return pocet_otazek
 
 class AdminEmailInfo(forms.ModelForm):

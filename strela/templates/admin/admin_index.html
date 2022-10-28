@@ -1,57 +1,58 @@
 {% extends "admin_base.html" %}
 {% block refresh %}<meta http-equiv="refresh" content="20">{% endblock %}
+{% block extrajs %}
+<script>
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+      })
+</script>
+{% endblock %}
 {% block content %}
 {% if aktivni_soutez %}
     {% if soutez_valid %}
         <div class="row mb-5">
             <span class="badge badge-info font-weight-bold" title = "Celkové množství otázek v soutěži"><h2>{{ n_otazek_celkem }}</h2>Celkem otázek</span>
-            <span class="badge badge-secondary font-weight-bold ml-4" title = "Počet ještě nezakoupených otázek"><h2>{{ n_otazek_stav_count.0 }}</h2>Nové</span>
-           {# <span class="badge badge-info font-weight-bold ml-2" title = "Zakoupené neřešené otázky"><h2>{{ n_otazek_stav_count.1 }}</h2>Zakoupené</span>   #}
-            <span class="badge badge-warning font-weight-bold ml-2" title = "Otázky čekající na ruční kontrolu"><h2>{{ n_otazek_stav_count.2 }}</h2>Ke kontrole</span>
-            <span class="badge badge-success font-weight-bold ml-2" title = "Počet vyřešených otázek"><h2>{{ n_otazek_stav_count.3 }}</h2>Vyřešeno</span>
-            <span class="badge badge-danger font-weight-bold ml-4" title = "Počet otázek čekajících na vyřešení technickou podporou"><h2>{{ n_otazek_stav_count.4 }}</h2>technická podpora</span>
-            <span class="badge badge-primary font-weight-bold ml-2" title = "Otázky prodané do bazaru"><h2>{{ n_otazek_stav_count.5 }}</h2>V bazaru</span>
-            <span class="badge badge-warning font-weight-bold ml-4" title = "Chybně zadané otázky"><h2>{{ n_otazek_chybne }}</h2>Chybně zadané</span>
-           {# <span class="badge badge-primary font-weight-bold ml-2" title = "Chybně zodpovězené otázky"><h2>{{ n_otazek_stav_count.7 }}</h2>Chybně zodpovězené</span> #}
-            <span class="badge badge-{{ color }} ml-auto" id="cas">
+            <span class="badge badge-warning font-weight-bold ml-2" title = "Otázky čekající na ruční kontrolu"><h2>{{ n_otazek_kontrola }}</h2>Ke kontrole</span>
+            <span class="badge badge-warning font-weight-bold ml-2" title = "Počet otázek čekajících na vyřešení technickou podporou"><h2>{{ n_otazek_podpora }}</h2>Technická podpora</span>
+            <span class="badge badge-success font-weight-bold ml-4" title = "Počet vyřešených otázek"><h2>{{ n_otazek_vyreseno }}</h2>Vyřešeno</span>
+            <span class="badge badge-danger font-weight-bold ml-4" title = "Chybně zadané otázky"><h2>{{ n_otazek_chybne }}</h2>Chybně zadané</span>
+            <span class="badge badge-info ml-auto" title="Počet příhlášených týmů"><h2>{{ n_tymu }}</h2>Počet týmů</span>
+            <span class="badge badge-{{ color }} ml-4" id="cas">
                 <h3>{{ konec }}</h3> Konec soutěže
-            </span>     
+            </span>
+        </div>
+        
+        <div class="row mt-3">
+            <i>Hodnoty se přepočítávají jednou za minutu</i>
             <table class="table table-hover mt-3 table-sm">
                 <thead>
                     <tr>
-                        <th scope="col">Pool otázek pro nákup</th>
-                        <th scope="col">Složitost a počty</th>
+                        <th scope="col">Škola</th>
+                        <th scope="col">Počet týmů</th>
+                        <th scope="col">Dostupné</th>
+                        <th scope="col">Zakoupené</th>
+                        <th scope="col">Odevzdané</th>
+                        <th scope="col">Vyřešené</th>
+                        <th scope="col">Technická podpora</th>
+                        <th scope="col">V bazaru</th>
+                        <th scope="col">Zakoupené z bazaru</th>
+                        <th scope="col">Chybně zodpovězené</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% for o in n_otazek_skoly %}
                     <tr>
-                        <td> Nové </td>
-                        <td>
-                            {% for o in n_otazek_nove_slozitost %}
-                                {{o.otazka__obtiznost}}:{{o.total}} 
-                            {% empty %}
-                                Žádné otázky v poolu !!
-                            {% endfor %}
-                        </td>
+                        <td>{{ o.0.0 }}</td>
+                        <td>{{ o.0.1 }}</td>
+                        {% for s in o.1 %}
+                            <td data-toggle="tooltip" data-placement="top" title="{{ s.1 }}">{{ s.0 }}</td>
+                        {% endfor %}
                     </tr>
-                    <tr>
-                        <td> Bazar </td>
-                        <td>
-                            {% for o in n_otazek_bazar_slozitost %}
-                                {{o.otazka__obtiznost}}:{{o.total}} 
-                            {% empty %}
-                                Žádné otázky v poolu !!
-                            {% endfor %}
-                        </td>
-                    </tr>
+                    {% endfor %}
             </tbody>
         </table>
-
-        <div class="row">
-            <p>Počet přihlášených týmů: {{ n_tymu }}</p>
         </div>
 
-        </div>
     {% else %}
         <div class="alert alert-danger" role="alert">
             <h4 class="alert-heading">Tato soutěž je prezenční</h4>

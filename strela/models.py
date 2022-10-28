@@ -1,11 +1,13 @@
 from __future__ import annotations
 from email.policy import default
+from statistics import mode
 from tabnanny import verbose
 
 from django.db import models, transaction
 from django.core.cache import cache
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
 from django.utils.timezone import now
+from django.db.models import Q
 
 import datetime
 import logging
@@ -18,14 +20,14 @@ class Skola(models.Model):
     kratky_nazev:str = models.CharField(max_length=200)
 
     email1:str = models.EmailField(max_length=256)
-    email2:str = models.EmailField(max_length=256)
+    email2:str = models.EmailField(max_length=256, blank=True)
     
     region:str = models.CharField(max_length=1)
     kraj:str = models.CharField(max_length=1)
     okres:str = models.CharField(max_length=1)
 
     def __str__(self):
-        return self.nazev
+        return self.nazev + f' ({self.uzemi})'
 
     def get_queryset(self):
         return Skola.objects.all().order_by("-nazev")
@@ -33,6 +35,10 @@ class Skola(models.Model):
     @property
     def uzemi(self):
         return 'CZ0' + self.region + self.kraj + self.okres
+
+    @property
+    def kratce(self):
+        return self.kratky_nazev + f' ({self.uzemi})'
 
     class Meta:
         verbose_name="Škola"
@@ -74,7 +80,7 @@ class Tym(AbstractBaseUser):
 
     def __str__(self):
         from . utils import vokalizace_z_ze # musí to být tady, jinak to padá na chybě importu
-        return self.jmeno + ' ' + vokalizace_z_ze(self.skola)
+        return self.jmeno + ' ' + vokalizace_z_ze(self.skola) + ' (' + self.skola.uzemi + ')'
 
     def get_queryset(self):
         return Tym.objects.all().order_by("-cislo")
@@ -96,12 +102,12 @@ class Soutez(models.Model):
     typ:str = models.CharField(max_length=1, choices = FLAGMF)
     prezencni:str = models.CharField(max_length=1, choices = FLAGPREZENCNI)
     aktivni:bool = models.BooleanField(verbose_name="Soutež probíhá", default=False)
-    limit:int = models.PositiveIntegerField(verbose_name = "Max. počet týmů",default=30)
-    regod:datetime.datetime = models.DateTimeField(verbose_name = "Zahájení registrace",default=now)
-    regdo:datetime.datetime = models.DateTimeField(verbose_name = "Konec registrace",default=now)
+    limit:int = models.PositiveIntegerField(verbose_name = "Max. počet týmů", default=30)
+    regod:datetime.datetime = models.DateTimeField(verbose_name = "Zahájení registrace", default=now)
+    regdo:datetime.datetime = models.DateTimeField(verbose_name = "Konec registrace", default=now)
     rok:int = models.PositiveIntegerField(default=0)
-    zahajena:datetime.datetime = models.DateTimeField(verbose_name = "Zahájení soutěže",blank = True, null = True)
-    delkam:int = models.PositiveIntegerField(verbose_name = "Délka soutěže",default=120)
+    zahajena:datetime.datetime = models.DateTimeField(verbose_name = "Zahájení soutěže", blank = True, null = True)
+    delkam:int = models.PositiveIntegerField(verbose_name = "Délka soutěže", default=120)
 
     def __str__(self):
         """`Matematika 2020 [O]`"""
@@ -192,6 +198,7 @@ class Otazka(models.Model):
     obtiznost:str = models.CharField(max_length = 1, choices = FLAGDIFF)
     zadani:str = models.TextField()
     reseni:str = models.CharField(max_length = 250)
+    obrazek:str = models.CharField(max_length = 32, blank=True, null=True)
 
     def __str__(self):
         """F-23: schválená lehká (automaticky)"""
@@ -210,23 +217,34 @@ class Otazka(models.Model):
             ("novasoutez","Může založit novou soutěž"),
         ]
 
-class Tym_Soutez_Otazka(models.Model):
-    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, blank=True, null=True)
+class Soutez_Otazka(models.Model):
+    otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, db_index=True)
     soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
-    otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, related_name='otazky')
+    cisloVSoutezi:int = models.IntegerField(verbose_name="Číslo otázky v soutěži", default=0)
+
+    class Meta:
+        verbose_name='Otázka v soutěži'
+        verbose_name_plural="Otázky v soutéžích"
+
+    def __str__(self) -> str:
+        return f'{self.otazka.typ}-{self.otazka.id} [{self.cisloVSoutezi}] ({self.soutez.rok})'
+
+class Tym_Soutez_Otazka(models.Model):
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)
+    skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, null=True) # porusuje zasady spravne databaze, ale urychluje vyhledavani
+    otazka:Soutez_Otazka = models.ForeignKey(Soutez_Otazka, on_delete=models.CASCADE, related_name='otazky', db_index=True)
     stav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
     odpoved:str = models.CharField(max_length = 128, blank=True)
     bazar:bool = models.BooleanField(verbose_name="Zakoupena z bazaru", default=False)
-    cisloVSoutezi:int = models.IntegerField(verbose_name="Číslo otázky v soutěži", default=0)
     bylaPodpora:bool = models.BooleanField(verbose_name="Vyskytla se na technické podpoře", default=False)
 
     def __str__(self):
         """`F-23 [4] (2020): V bazaru`"""
-        return "{0}-{1} [{4}] ({2}): {3}".format(self.otazka.typ, self.otazka.id, self.soutez.rok, self.get_stav_display(), self.cisloVSoutezi)
+        return f"{self.otazka}: {self.get_stav_display()}"
 
     class Meta:
-        verbose_name="Otázka v soutěži"
-        verbose_name_plural="Otázky v soutéžích"
+        verbose_name="Otázka týmu v soutěži"
+        verbose_name_plural="Otázky týmů v soutéžích"
 
     @classmethod
     @transaction.atomic
@@ -238,7 +256,13 @@ class Tym_Soutez_Otazka(models.Model):
             raise Exception('Obchod se na posledních 15 minut soutěže zavírá')
         
         if tym_soutez.penize >= CENIK[obtiznost][0]:
-            otazky = Tym_Soutez_Otazka.objects.filter(stav=0, soutez=soutez, otazka__obtiznost=obtiznost).order_by("?")[:1]
+            # vsechny otazky v dane soutezi
+            otazky = Soutez_Otazka.objects.filter(otazka__obtiznost=obtiznost, soutez=soutez)
+            # vyhodit vsechny otazky, ktere uz si zakoupila dana skola
+            otazky = otazky.exclude(
+                id__in=Tym_Soutez_Otazka.objects.filter(skola=tym.skola).values_list('otazka', flat=True)
+            ).order_by('?')
+
             if len(otazky) == 0:
                 if obtiznost == 'A':
                     logger.info(f'Tým {tym} zakoupil otázku z obchodu, ale koupila se z bazaru')
@@ -246,15 +270,20 @@ class Tym_Soutez_Otazka(models.Model):
                 else:
                     logger.error("Tým {} se pokusil koupit otázku s obtížností {}, které došly.".format(tym, obtiznost))
                     raise Exception("došly otázky s obtížností {} :/".format(obtiznost))
-            otazka:Tym_Soutez_Otazka = otazky[0]
-            otazka.stav = 1
+
+            otazka:Soutez_Otazka = otazky[0]
+            tso = Tym_Soutez_Otazka.objects.create(
+                tym=tym,
+                skola=tym.skola,
+                otazka=otazka,
+                stav=1
+            )
+
             tym_soutez.penize -= CENIK[obtiznost][0]
-            otazka.tym=tym
             LogTable.objects.create(tym=tym, otazka=otazka.otazka, soutez=soutez, staryStav=0, novyStav=1)
             logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(tym, otazka, obtiznost, CENIK[obtiznost][0]))
-            otazka.save()
             tym_soutez.save()
-            return otazka
+            return tso
         else: raise Exception("nedostatek prostředků pro nákup otázky")
 
     @classmethod
@@ -263,16 +292,21 @@ class Tym_Soutez_Otazka(models.Model):
         tym_soutez:Tym_Soutez = Tym_Soutez.objects.get(tym=tym, soutez=soutez)
 
         if tym_soutez.penize >= CENIK[obtiznost][2]:
-            otazky = Tym_Soutez_Otazka.objects.filter(stav=5, soutez=soutez, otazka__obtiznost=obtiznost).order_by("?")[:1]
+            otazky = Tym_Soutez_Otazka.objects.filter(stav=5, otazka__soutez=soutez, otazka__otazka__obtiznost=obtiznost)
+            otazky = otazky.exclude(
+                id__in=Tym_Soutez_Otazka.objects.filter((~Q(stav=5)) & Q(skola=tym.skola)).values_list('id', flat=True)
+            )
+
             if len(otazky) == 0:
                 logger.error("Tým {} se pokusil koupit otázku s obtížností {} Z BAZARU, které došly.".format(tym, obtiznost))
                 raise Exception("došly otázky s obtiznosti {} v bazaru :/".format(obtiznost))
+
             otazka:Tym_Soutez_Otazka = otazky[0]
             otazka.stav = 6
             tym_soutez.penize -= CENIK[obtiznost][2]
             otazka.tym=tym
-            LogTable.objects.create(tym=tym, otazka=otazka.otazka, soutez=soutez, staryStav=5, novyStav=6)
-            logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(tym, otazka, obtiznost, CENIK[obtiznost][0]))
+            LogTable.objects.create(tym=tym, otazka=otazka.otazka.otazka, soutez=soutez, staryStav=5, novyStav=6)
+            logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(tym, otazka.otazka, obtiznost, CENIK[obtiznost][0]))
             otazka.save()
             tym_soutez.save()
             return otazka
@@ -285,16 +319,16 @@ class Tym_Soutez_Otazka(models.Model):
     # pro ucely hromadneho prodavani v 1 transakci
     def sell_unsafe(self):
         if self.bazar: return
-        LogTable.objects.create(tym=self.tym, otazka=self.otazka, soutez=self.soutez, staryStav=self.stav, novyStav=5)
+        LogTable.objects.create(tym=self.tym, otazka=self.otazka.otazka, soutez=self.otazka.soutez, staryStav=self.stav, novyStav=5)
         
-        team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.tym, soutez=self.soutez)
+        team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.tym, soutez=self.otazka.soutez)
         self.tym = None
-        if self.otazka.obtiznost != "A":
+        if self.otazka.otazka.obtiznost != "A":
             self.bazar = True
         self.stav = 5
         self.odpoved = ""
-        team.penize += CENIK[self.otazka.obtiznost][2]
-        logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(team.tym, self.otazka, CENIK[self.otazka.obtiznost][2]))
+        team.penize += CENIK[self.otazka.otazka.obtiznost][2]
+        logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(team.tym, self.otazka, CENIK[self.otazka.otazka.obtiznost][2]))
         self.save()
         team.save()
 
@@ -302,20 +336,21 @@ class Tym_Soutez_Otazka(models.Model):
     @transaction.atomic
     def sellall(cls, soutez:Soutez):
         logger.info(f'Automatické prodávání otázek v soutěži {soutez}')
-        otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 6, 7], soutez=soutez)
+        otazky:list[Tym_Soutez_Otazka] = Tym_Soutez_Otazka.objects.filter(stav__in=[1, 6, 7], otazka__soutez=soutez)
         for o in otazky:
             o.sell_unsafe()
 
     # pošle otázku na technickou podporu
     @transaction.atomic
-    def send_to_brazil(self, tym, sazka:int = 0):
+    def send_to_brazil(self, tym:Tym, sazka:int = 0):
         self.stav = 4
         self.bylaPodpora = True
+        tvs = Tym_Soutez.objects.get(soutez=self.otazka.soutez, tym=tym)
         try:
-            konverzace = ChatConvos.objects.get(otazka=self, tym=tym)
+            konverzace = ChatConvos.objects.get(otazka=self, tym=tvs)
             konverzace.uzavreno = False
         except Exception:
-            konverzace = ChatConvos.objects.create(otazka=self, tym=self.tym, uzavreno=False)
+            konverzace = ChatConvos.objects.create(otazka=self, tym=tvs, uzavreno=False)
         konverzace.sazka = sazka
         konverzace.save()
         return konverzace
@@ -344,14 +379,15 @@ class LogTable(models.Model):
         cached = cache.get(cache_key)
         if not cached:
             try:
-                cvs = Tym_Soutez_Otazka.objects.get(otazka=self.otazka, soutez=self.soutez).cisloVSoutezi
+                cvs = Soutez_Otazka.objects.get(otazka=self.otazka, soutez=self.soutez).cisloVSoutezi
                 cache.set(cache_key, cvs)
                 return cvs
-            except Tym_Soutez_Otazka.DoesNotExist as e:
-                logger.error("Chyba {} při získávání atributu cisloVSoutezi".format(e))
+            except Exception as e:
+                logger.error("Chyba {} při získávání atributu cisloVSoutezi (otázka {})".format(e, self.otazka.id))
                 return 0
         else:
-            return cached  
+            return cached
+
     @property
     def typOtazky(self) -> str:
         cache_key = "to_{}-{}".format(self.otazka_id,self.soutez_id) 
@@ -431,11 +467,13 @@ class KeyValueStore(models.Model):
     static_keys = [
         'qr_clanek',
         'soutez_index',
-        'soutez_pravidla'
+        'soutez_pravidla',
+        'registrace_info'
     ]
 
     key_mapping = {
         'qr_clanek': 'QR Článek',
         'soutez_index': 'Index soutěže',
-        'soutez_pravidla': 'Pravidla soutěže'
+        'soutez_pravidla': 'Pravidla soutěže',
+        'registrace_info': 'Informace k registraci'
     }

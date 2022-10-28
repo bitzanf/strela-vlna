@@ -6,7 +6,7 @@ from django.db.models.query import QuerySet
 from django.utils.timezone import now
 from sequences import get_next_value
 
-from . models import EmailInfo, KeyValueStore, Skola, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, ChatMsgs, ChatConvos
+from . models import EmailInfo, KeyValueStore, Skola, Soutez_Otazka, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, ChatMsgs, ChatConvos
 from . utils import make_tym_login
 
 class TymCreationForm(forms.ModelForm):
@@ -175,10 +175,13 @@ class SoutezAdmin(admin.ModelAdmin):
             self.form = self.form
         return super(SoutezAdmin, self).get_form(request, obj, **kwargs)
 
-        
+class SkolaAdmin(admin.ModelAdmin):
+    list_display = ('nazev', 'uzemi')
+    search_fields = ('nazev',)
+
 class TymSoutezOtazkaAdmin(admin.ModelAdmin):
-    list_display = ('tym', 'soutez','otazka','cisloVSoutezi','stav','odpoved','bazar') 
-    search_fields = ('cisloVSoutezi', 'tym__jmeno')
+    list_display = ('tym', 'otazka', 'stav', 'odpoved', 'bazar')
+    search_fields = ('otazka__cisloVSoutezi', 'tym__jmeno')
 
 class OtazkaAdmin(admin.ModelAdmin):
     list_display = ('typ', 'pk','stav','obtiznost','vyhodnoceni')
@@ -186,7 +189,7 @@ class OtazkaAdmin(admin.ModelAdmin):
 
 class LogTableAdmin(admin.ModelAdmin):
     list_display = ('tym', 'otazka','soutez','staryStav','novyStav', 'cas')
-    search_fields = ('tym__jmeno', 'otazka__pk')
+    search_fields = ('tym__jmeno', 'otazka__otazka__pk')
 
 class EmailInfoAdmin(admin.ModelAdmin):
     list_display = ('odeslal','soutez','kdy')
@@ -203,7 +206,11 @@ class KeyValueStoreAdmin(admin.ModelAdmin):
         else:
             return obj.val
 
-admin.site.register(Skola)
+class SoutezOtazkaAdmin(admin.ModelAdmin):
+    list_display = ('otazka', 'soutez', 'cisloVSoutezi')
+    search_fields = ('otazka__id', 'cisloVSoutezi')
+
+admin.site.register(Skola, SkolaAdmin)
 admin.site.register(Tym,TymAdmin)
 admin.site.register(Soutez, SoutezAdmin)
 admin.site.register(Tym_Soutez, TymSoutezAdmin)
@@ -214,3 +221,4 @@ admin.site.register(EmailInfo, EmailInfoAdmin)
 admin.site.register(ChatConvos, ChatConvosAdmin)
 admin.site.register(ChatMsgs)
 admin.site.register(KeyValueStore, KeyValueStoreAdmin)
+admin.site.register(Soutez_Otazka, SoutezOtazkaAdmin)

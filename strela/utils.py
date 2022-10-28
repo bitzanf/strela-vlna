@@ -74,20 +74,22 @@ def tex_escape(text: str):
     regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key = lambda item: - len(item))))
     return regex.sub(lambda match: conv[match.group()], text)
 
-def vokalizace_z_ze(skola: Skola) -> str:
+def vokalizace_z_ze(skola: Skola, kratky_nazev:bool = True) -> str:
     """
     vytvoří správně skloněný název školy s předložkou z/ze
     viz https://prirucka.ujc.cas.cz/?id=770
     """
 
-    cache_key = f'sk_zze_{skola.pk}'
+    cache_key_suffix = 'k' if kratky_nazev else 'd'
+    cache_key = f'sk_zze_{skola.pk}_{cache_key_suffix}'
     obj = cache.get(cache_key)
     if obj:
         return obj
     
     souhlasky = 'hkrdtnzscrj'   # h ch k r d t n ž š č ř ď ť ň
     samohlasky = 'aeiyou'
-    skola_split = slugify(skola.nazev).split('-')
+    skola_str = skola.kratky_nazev if kratky_nazev else skola.nazev
+    skola_split = slugify(skola_str).split('-')
     slovo = skola_split[0]
     z_ze = 'z'
 

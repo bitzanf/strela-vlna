@@ -24,7 +24,7 @@ FLAGSTATE = (
 )
 
 FLAGSOUTEZSTATE = (
-    (0, "Nová"),
+    (0, "Nová"),    # od V2 nevyuzito
     (1, "Zakoupená"),
     (2, "Odevzdaná"),
     (3, "Vyřešená"),
