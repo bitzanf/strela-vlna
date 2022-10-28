@@ -27,7 +27,7 @@ class Skola(models.Model):
     okres:str = models.CharField(max_length=1)
 
     def __str__(self):
-        return self.nazev + f' ({self.uzemi})'
+        return self.nazev
 
     def get_queryset(self):
         return Skola.objects.all().order_by("-nazev")

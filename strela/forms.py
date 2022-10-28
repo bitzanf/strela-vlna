@@ -16,15 +16,14 @@ import re
 class RegistraceForm(forms.ModelForm):
     required_css_class = 'required'
     kraj = forms.ChoiceField(choices=[(None, '-- Vyberte kraj --')] + get_nuts_kraje())
-    okres = forms.ChoiceField(disabled=True)
-    skola = forms.CharField(widget=AutoCompleteSelectWidget(SkolaLookup), disabled=True, label='Škola')
+    okres = forms.ChoiceField(choices=[(None, '-- Vyberte okres --')] + list(CZ_NUTS_NAMES.items()))    # django ma jinak vyhrady...
+    skola = forms.CharField(widget=AutoCompleteSelectWidget(SkolaLookup), label='Škola')
 
     class Meta:
         model = Tym
         fields = ['jmeno','email','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
         labels = {
             "jmeno": "Jméno týmu",
-            "skola": "Škola",
             "email": "Email",
             "soutezici1": "Soutěžící 1",
             "soutezici2": "Soutěžící 2",
@@ -33,10 +32,8 @@ class RegistraceForm(forms.ModelForm):
             "soutezici5": "Soutěžící 5"
         }
 
-
     def clean(self):
         super().clean()
-        
         # tým musí zaškrtnout alespoň jednu soutěž
         has_soutez = False
         valid_soutez = False

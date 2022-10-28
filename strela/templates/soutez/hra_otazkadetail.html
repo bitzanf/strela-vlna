@@ -89,7 +89,7 @@
 {% else %}   
     <div class="card bg-light my-4">
         <div class="card-header bg-info font-weight-bold">
-            Zadání {{otazka.typ}}-{{object.cisloVSoutezi}}
+            Zadání {{otazka.otazka.typ}}-{{object.otazka.cisloVSoutezi}}
             {% if was_otazka_podpora %}
                 <span class="badge badge-secondary">Sázka týmu: {{ sazka_tymu|default:'0' }} DC<span class="equalsignshift" style="left: -12px; top: -1px">=</span></span>
             {% endif %}

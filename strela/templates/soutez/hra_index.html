@@ -7,44 +7,22 @@
     <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.10.23/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.8.2"></script>
     {% include 'latexify/stylesheets.html' %}
     <script type="text/javascript">
-        function autorefresh() {
-            setInterval("refreshpage()", 20000);
-        }
-
-        function refreshpage() {
-            $.ajax({
-                url: "{% url "hra_index_jsapi" %}",
-                success: function(data) {
-                    $("#innerdata").html(data);
-                    var dt = $("#datatable_otazky").DataTable({
-                        stateSave: true
-                    });
-                    makeRowClickable();
-                    dt.on('draw.dt', makeRowClickable);
-                }
-            });
-        }
-
-        function makeRowClickable() {
-            $(".clickable-row").click(function() {
-                window.location = $(this).data("href");
-            });
-        }
-        </script>
-{% endblock %}
-
-{% block content %}
-    {% load bootstrap4 %}
-    {% load latexify %}
-    <div class="container" style="margin-left: -20px" id="innerdata"></div>
-
-    <script language="javascript">
-        $(document).ready(function() {
-            refreshpage();
-            autorefresh();
+    function makeRowClickable() {
+        $(".clickable-row").click(function() {
+            window.location = $(this).data("href");
         });
+    }
+
+    htmx.on("#innerdata", "htmx:afterSettle", function(evt) {
+        var dt = $("#datatable_otazky").DataTable({
+            stateSave: true
+        });
+        makeRowClickable();
+        dt.on('draw.dt', makeRowClickable);
+    });
     </script>
     <style>
         .cenik_table > th {
@@ -56,6 +34,12 @@
             text-align: center;
         }
     </style>
+{% endblock %}
+
+{% block content %}
+    {% load bootstrap4 %}
+    {% load latexify %}
+    <div class="container" style="margin-left: -20px" id="innerdata" hx-get="{% url "hra_index_jsapi" %}" hx-trigger="load, every 20s"></div>
 
     <div class="modal fade" id="modalCenik" tabindex="-1" role="dialog" aria-labelledby="modalCenikLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">

@@ -10,15 +10,11 @@ class SkolaLookup(ModelLookup):
     def get_query(self, request, term):
         result = super().get_query(request, term)
         uzemi = request.GET.get('uzemi', '')
-        print(uzemi)
         if not uzemi:
             return self.model.objects.none()
         else:
             result = result.filter(region=uzemi[3], kraj=uzemi[4], okres=uzemi[5])
 
         return result.order_by('nazev')
-
-    def get_item_label(self, item):
-        return item.nazev
 
 registry.register(SkolaLookup)

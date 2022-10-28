@@ -25,12 +25,12 @@
         </a>
          {% if user.is_authenticated %}
                 <form class="form-inline ml-auto" action="{% url 'logout_souteze'%}">            
-                    <span class="navbar-text mr-3">Jste přihlášen jako <b><span  class="ml-2" style="color: #ffffffaa;"> {{user.jmeno| default:"nesoutěžící"}}</b></span></span>
+                    <span class="navbar-text mr-3">Jste přihlášeni jako <b><span  class="ml-2" style="color: #ffffffaa;"> {{user.jmeno| default:"nesoutěžící"}}</b></span></span>
                     <button class="btn btn-success my-2 btn-sm" type="submit">Odhlásit</button>
                 </form>     
                 {% else %}
                 <form class="form-inline ml-auto"  action="{% url "login_souteze" %}">            
-                    <span class="navbar-text mr-3">Nejste přihlášen  </span>
+                    <span class="navbar-text mr-3">Nejste přihlášeni  </span>
                     <button class="btn btn-success my-2 btn-sm" type="submit">Přihlásit</button>
                 </form>  
             {% endif %}       
@@ -74,6 +74,25 @@
                         <div class="alert alert-danger" role="alert">
                             <h4 class="alert-heading">Není spuštěna žádná soutěž</h4>
                             <p>Nemůžete soutěžit, jelikož není spuštěna žádná soutěž</p>
+                        </div>
+                        <div>
+                            <p>
+                            <h4>Vaše škola:</h4>
+                            <div>{{ skola }}</div>
+                            <div class="mt-1"><i>{{ email }}</i></div>
+                            </p><hr>
+                            <p>
+                            <h4>Vaše přihlášené soutěže:</h4>
+                            {% for s in souteze_tymu %}
+                                <div>{{ s }}</div>
+                            {% endfor %}
+                            </p><hr>
+                            <p>
+                            <h4>Soutěžící:</h4>
+                            {% for s in soutezici %}
+                                <div>{{ s }}</div>
+                            {% endfor %}
+                            </p>
                         </div>
                     {% endif %}
                 {% else %}

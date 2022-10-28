@@ -156,7 +156,7 @@ def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool
         return odpoved == reseni
 
 def get_nuts_kraje():
-    rx = re.compile(r'^CZ0.[^0]0$')
+    rx = re.compile(r'^CZ0..0$')
     out = []
     for nuts, nazev in CZ_NUTS_NAMES.items():
         if rx.match(nuts):

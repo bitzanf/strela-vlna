@@ -641,9 +641,10 @@ class RegistraceIndex(CreateView):
         formular.login = make_tym_login(formular.jmeno)
         password = Tym.objects.make_random_password(length=8, allowed_chars='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789')
         formular.set_password(password)
-        # zpracujeme seznam soutezi na ktere se prihlasili
+        formular.skola = Skola.objects.get(id=form.data['skola_1'])
         formular.save()
 
+        # zpracujeme seznam soutezi na ktere se prihlasili
         souteze = Soutez.objects.filter(rok=aktualni_rok)
         soutez_list = []
         rx = re.compile('soutez(?P<pk>\d+)')
@@ -965,6 +966,20 @@ class HraIndex(LoginRequiredMixin, TemplateView):
         except Exception as e:
             messages.error(self.request, "Chyba databáze: " + e)
             logger.error("Došlo k chybě {}. Tým {} Soutěž {}".format(e, self.request.user, context["aktivni_soutez"]))
+
+        if not context['aktivni_soutez']:
+            context['souteze_tymu'] = [s.pretty_name(True) for s in Soutez.objects.filter(
+                id__in=Tym_Soutez.objects.filter(tym=self.request.user).values_list('soutez', flat=True)
+            )]
+            context['soutezici'] = [
+                self.request.user.soutezici1,
+                self.request.user.soutezici2,
+                self.request.user.soutezici3,
+                self.request.user.soutezici4,
+                self.request.user.soutezici5
+            ] if context["is_user_tym"] else []
+            context['skola'] = self.request.user.skola if context["is_user_tym"] else None
+            context['email'] = self.request.user.email if context["is_user_tym"] else None
         return context
 
 

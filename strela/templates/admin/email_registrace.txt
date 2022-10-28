@@ -20,7 +20,7 @@ heslo: <b>{{ heslo }}</b><br><br>
 Toto heslo pečlivě uschovejte, budete ho potřebovat pro přihlášení do soutěží.<br>
 
 <br>
-{{ infotext }}
+{{ infotext|safe }}
 <br>
 S pozdravem <br>
 <i>organizační tým Střely a Vlny</i>

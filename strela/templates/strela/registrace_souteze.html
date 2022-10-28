@@ -21,10 +21,11 @@
             
             if (kraj == "") {
                 $('#id_okres').prop("disabled", true);
+                $("#id_skola_0").text("");
                 $("#id_skola_0").prop("disabled", true);
                 return;
             }
-            
+
             $('#id_okres').append($("<option>", {
                 value: "",
                 text: "-- Vyberte okres --"
@@ -43,10 +44,17 @@
         }
 
         $(document).ready(function() {
+            //musi se to udelat az tady, protoze django ma jinak vyhrady...
+            $("#id_skola_0").prop("disabled", true);
+            $('#id_okres').prop("disabled", true);
+            
             $("#id_kraj").on("change", setOkres);
             $('#id_okres').on("change", function() {
                 if ($('#id_okres').val() != "") $("#id_skola_0").prop("disabled", false);
-                else $("#id_skola_0").prop("disabled", true);
+                else {
+                    $("#id_skola_0").text("");
+                    $("#id_skola_0").prop("disabled", true);
+                }
             });
             $("#id_skola_0").djselectable('option', 'prepareQuery', query => {
                 query.uzemi = $('#id_okres').val();
