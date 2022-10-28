@@ -4,6 +4,7 @@ from django.utils.timezone import now
 from django.contrib import messages
 from django.utils.text import slugify
 import re, sys
+from . constants import CZ_NUTS_NAMES
 
 def eval_registration(self):
     context: dict[str, ] = {}
@@ -153,3 +154,11 @@ def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool
             return False
     else:
         return odpoved == reseni
+
+def get_nuts_kraje():
+    rx = re.compile(r'^CZ0.[^0]0$')
+    out = []
+    for nuts, nazev in CZ_NUTS_NAMES.items():
+        if rx.match(nuts):
+            out.append((nuts, nazev))
+    return out

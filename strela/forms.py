@@ -1,21 +1,27 @@
+from email.policy import default
 from django import forms
+
+from strela.constants import CZ_NUTS_NAMES
 from .models import KeyValueStore, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
 from django.utils.timezone import now
 from bootstrap_datepicker_plus.widgets import DateTimePickerInput   # 9.10.2022 - nefunguje, opraveno na .widgets
 from django.forms import HiddenInput, DecimalField
 from .lookups import SkolaLookup
 from selectable.forms.widgets import AutoCompleteSelectWidget
-from . utils import make_tym_login
+from . utils import make_tym_login, get_nuts_kraje
 from tinymce.widgets import TinyMCE
 
 import re
 
 class RegistraceForm(forms.ModelForm):
     required_css_class = 'required'
+    kraj = forms.ChoiceField(choices=[(None, '-- Vyberte kraj --')] + get_nuts_kraje())
+    okres = forms.ChoiceField(disabled=True)
+    skola = forms.CharField(widget=AutoCompleteSelectWidget(SkolaLookup), disabled=True, label='Škola')
 
     class Meta:
         model = Tym
-        fields = ['jmeno','skola','email','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
+        fields = ['jmeno','email','soutezici1','soutezici2','soutezici3','soutezici4','soutezici5']
         labels = {
             "jmeno": "Jméno týmu",
             "skola": "Škola",
@@ -26,9 +32,7 @@ class RegistraceForm(forms.ModelForm):
             "soutezici4": "Soutěžící 4",
             "soutezici5": "Soutěžící 5"
         }
-        widgets = {
-            'skola': AutoCompleteSelectWidget(SkolaLookup)
-        }
+
 
     def clean(self):
         super().clean()

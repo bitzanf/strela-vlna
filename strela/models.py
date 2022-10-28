@@ -261,7 +261,7 @@ class Tym_Soutez_Otazka(models.Model):
             # vyhodit vsechny otazky, ktere uz si zakoupila dana skola
             otazky = otazky.exclude(
                 id__in=Tym_Soutez_Otazka.objects.filter(skola=tym.skola).values_list('otazka', flat=True)
-            ).order_by('?')
+            ).order_by('?')[:1]
 
             if len(otazky) == 0:
                 if obtiznost == 'A':
@@ -295,7 +295,7 @@ class Tym_Soutez_Otazka(models.Model):
             otazky = Tym_Soutez_Otazka.objects.filter(stav=5, otazka__soutez=soutez, otazka__otazka__obtiznost=obtiznost)
             otazky = otazky.exclude(
                 id__in=Tym_Soutez_Otazka.objects.filter((~Q(stav=5)) & Q(skola=tym.skola)).values_list('id', flat=True)
-            )
+            ).order_by('?')[:1]
 
             if len(otazky) == 0:
                 logger.error("Tým {} se pokusil koupit otázku s obtížností {} Z BAZARU, které došly.".format(tym, obtiznost))
@@ -468,12 +468,16 @@ class KeyValueStore(models.Model):
         'qr_clanek',
         'soutez_index',
         'soutez_pravidla',
-        'registrace_info'
+        'registrace_info',
+        'pozvanka_vip',
+        'pozvanka'
     ]
 
     key_mapping = {
         'qr_clanek': 'QR Článek',
         'soutez_index': 'Index soutěže',
         'soutez_pravidla': 'Pravidla soutěže',
-        'registrace_info': 'Informace k registraci'
+        'registrace_info': 'Informace k registraci',
+        'pozvanka_vip': 'VIP Pozvánka',
+        'pozvanka': 'Pozvánka'
     }

@@ -26,7 +26,7 @@ from sequences import get_next_value
 from . models import KeyValueStore, Soutez_Otazka, Tym, Soutez, Tym_Soutez, LogTable, Otazka, Tym_Soutez_Otazka, EmailInfo, ChatConvos, ChatMsgs, Skola
 from . utils import eval_registration, tex_escape, make_tym_login, auto_kontrola_odpovedi
 from . forms import AdminTextForm, RegistraceForm, HraOtazkaForm, AdminNovaSoutezForm, AdminNovaOtazka, AdminZalozSoutezForm, AdminEmailInfo, AdminSoutezMoneyForm
-from . constants import FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
+from . constants import CZ_NUTS_NAMES, FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAULT_MONEY
 
 import lxml.html as lxhtml
 
@@ -632,6 +632,7 @@ class RegistraceIndex(CreateView):
     def get_context_data(self, **kwargs):
         context = super(RegistraceIndex, self).get_context_data(**kwargs)
         context.update(eval_registration(self))
+        context['NUTS'] = CZ_NUTS_NAMES
         return context
 
     def form_valid(self, form):
