@@ -11,6 +11,7 @@
 
 {% block content %}
 {% load bootstrap4 %}
+{% load strela_tags %}
 
 <div class="row mb-3">  
     <h2> Soutěž : <span class="font-weight-bold">{{ soutez }}</span> - {{soutez.nazev}} </h2>
@@ -134,7 +135,7 @@
                     <tbody>    
                         <tr><td>Jméno týmu: </td><td>{{ t.tym.jmeno }}</td></tr>
                         <tr><td>Přihlašovací jméno: </td><td>{{ t.tym.login }}</td></tr>
-                        <tr><td>Škola: </td><td>{{ t.tym.skola }}</td></tr>
+                        <tr><td>Škola: </td><td>{{ t.tym.skola|z_ze_vokalizace }}</td></tr>
                         <tr><td>Registrační email: </td><td>{{ t.tym.email }}</td></tr>
                         <tr><td>Číslo v soutěži: </td><td>{{ t.cislo }}</td></tr>
                         <tr><td>Datum registrace: </td><td>{{ t.tym.cas_vytvoreni }}</td></tr>
@@ -158,6 +159,11 @@
         <a href="#" class="btn btn-primary ml-1 disabled">Odeslat email přihlášeným týmům</a>
     {% else %}    
         <a href="{% url 'admin_email_info' soutez.pk %}" class="btn btn-primary ml-1">Odeslat email přihlášeným týmům</a>
+    {% endif %}
+    {% if soutez.registrace %}
+        <a href="{% url 'admin_pozvanky' soutez.pk %}" class="btn btn-primary ml-1">Odeslat pozvánky</a>
+    {% else %}
+        <a href="#" class="btn btn-primary ml-1 disabled">Odeslat pozvánky</a>
     {% endif %}
     </div>  
 {% endblock %}

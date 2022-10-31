@@ -1,14 +1,16 @@
+from cProfile import label
 from email.policy import default
 from django import forms
+from pkg_resources import require
+from attr import field
 
 from strela.constants import CZ_NUTS_NAMES
 from .models import KeyValueStore, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
 from django.utils.timezone import now
 from bootstrap_datepicker_plus.widgets import DateTimePickerInput   # 9.10.2022 - nefunguje, opraveno na .widgets
-from django.forms import HiddenInput, DecimalField
 from .lookups import SkolaLookup
 from selectable.forms.widgets import AutoCompleteSelectWidget
-from . utils import make_tym_login, get_nuts_kraje
+from . utils import get_okres_for_kraj, make_tym_login, get_nuts_kraje
 from tinymce.widgets import TinyMCE
 
 import re
@@ -70,7 +72,7 @@ class RegistraceForm(forms.ModelForm):
                 self.fields["soutez"+str(s.pk)] = forms.BooleanField(required=False, label=s.pretty_name())
 
 class HraOtazkaForm(forms.ModelForm):
-    sazka = DecimalField(widget=HiddenInput(attrs={'id': 'sazka_penize'}), required=False, min_value=0)
+    sazka = forms.DecimalField(widget=forms.HiddenInput(attrs={'id': 'sazka_penize'}), required=False, min_value=0)
 
     class Meta:
         model = Tym_Soutez_Otazka
@@ -220,3 +222,71 @@ class AdminTextForm(forms.Form):
                 initial=KeyValueStore.objects.get(key=self.infotext_key).val
             )
         }
+
+class OkresyWidget(forms.MultiWidget):
+    def __init__(self, kraj, *args, **kwargs):
+        widgets = (
+            forms.CheckboxInput(attrs={'class': 'ml-1', 'style': 'margin-top: 0.7em;', 'onclick': 'toggleOkresy(this);'}),
+            forms.CheckboxSelectMultiple(choices=get_okres_for_kraj(kraj), attrs={'onclick': 'partialToggleParent(this);'})
+        )
+        super().__init__(widgets, *args, **kwargs)
+
+    def decompress(self, value):
+        if value:
+            return value.split('|')
+        else:
+            return ['', '']
+
+    def render(self, name, value, attrs=None, renderer=None):
+        # return super().render(name, value, attrs, renderer)
+        header_id = 'head_' + attrs['id']
+        data_id = 'data_' + attrs['id']
+        head_open = f'''
+        <div class="card">
+          <div class="card-header" id="{header_id}">
+            <h5 class="mb-0">
+              <button type="button" class="btn btn-link" data-toggle="collapse" data-target="#{data_id}" aria-expanded="false" aria-controls="{data_id}">
+              {CZ_NUTS_NAMES[name.split('-')[1]]}
+              </button>
+        '''
+        head_close = '</h5></div>'
+
+        data_open = f'''
+        <div id="{data_id}" class="collapse" aria-labelledby="{header_id}" data-parent="#accordion">
+          <div class="card-body">
+        '''
+        data_close = '</div></div></div>'
+        # return ''.join(w.render(name, value, attrs, renderer) for w in self.widgets)
+        return head_open + self.widgets[0].render(name, value, attrs, renderer) + head_close \
+             + data_open + self.widgets[1].render(name, value, attrs, renderer) + data_close
+
+class OkresyField(forms.MultiValueField):
+    def __init__(self, kraj, *args, **kwargs):
+        fields = (
+            forms.BooleanField(),
+            forms.MultipleChoiceField()
+        )
+        widget = OkresyWidget(kraj=kraj)
+        super().__init__(fields, required=False, require_all_fields=False, *args, **kwargs)
+        self.widget = widget
+        # self.label = CZ_NUTS_NAMES[kraj]
+        self.label = ''
+
+    def compress(self, data_list):
+        if data_list:
+            return '|'.join(data_list)
+
+class AdminPozvankyForm(forms.Form):
+    soutez_pk:int
+
+    def __init__(self, *args, **kwargs):
+        self.soutez_pk = kwargs.pop('soutez_pk')
+        super().__init__(*args, **kwargs)
+
+        for kraj, _ in get_nuts_kraje():
+            self.fields.update({
+                'kraj-'+kraj: OkresyField(kraj)
+            })
+
+    def is_valid(self) -> bool:
+        return True

@@ -56,6 +56,8 @@ urlpatterns = [
     path("admin/infotext/", views.AdminTextList.as_view(), name="admin_text_list"),
     path("admin/infotext/<str:key>", views.AdminText.as_view(), name="admin_text"),
 
+    path("admin/pozvanky/<int:soutez_pk>", views.AdminPozvanky.as_view(), name="admin_pozvanky"),
+
 #jsapi
     path("jsapi/hra_index", views.HraIndexJsAPI.as_view(), name="hra_index_jsapi"),
     path("jsapi/hra_vysledky", views.SoutezVysledkyJsAPI.as_view(), name="hra_vysledky_jsapi"),

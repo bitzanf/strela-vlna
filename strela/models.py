@@ -1,7 +1,4 @@
 from __future__ import annotations
-from email.policy import default
-from statistics import mode
-from tabnanny import verbose
 
 from django.db import models, transaction
 from django.core.cache import cache
@@ -80,7 +77,7 @@ class Tym(AbstractBaseUser):
 
     def __str__(self):
         from . utils import vokalizace_z_ze # musí to být tady, jinak to padá na chybě importu
-        return self.jmeno + ' ' + vokalizace_z_ze(self.skola) + ' (' + self.skola.uzemi + ')'
+        return self.jmeno + ' ' + vokalizace_z_ze(self.skola)# + ' (' + self.skola.uzemi + ')'
 
     def get_queryset(self):
         return Tym.objects.all().order_by("-cislo")
@@ -299,7 +296,7 @@ class Tym_Soutez_Otazka(models.Model):
 
             if len(otazky) == 0:
                 logger.error("Tým {} se pokusil koupit otázku s obtížností {} Z BAZARU, které došly.".format(tym, obtiznost))
-                raise Exception("došly otázky s obtiznosti {} v bazaru :/".format(obtiznost))
+                raise Exception("došly otázky s obtížností {} v bazaru :/".format(obtiznost))
 
             otazka:Tym_Soutez_Otazka = otazky[0]
             otazka.stav = 6

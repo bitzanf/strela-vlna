@@ -1,10 +1,13 @@
+from django.core import mail
 from django.core.cache import cache
-from . models import Soutez, Skola
+from . models import KeyValueStore, Soutez, Skola
 from django.utils.timezone import now
 from django.contrib import messages
 from django.utils.text import slugify
-import re, sys
+import re, sys, threading, logging
 from . constants import CZ_NUTS_NAMES
+
+logger = logging.getLogger(__name__)
 
 def eval_registration(self):
     context: dict[str, ] = {}
@@ -111,7 +114,7 @@ def vokalizace_z_ze(skola: Skola, kratky_nazev:bool = True) -> str:
         z_ze = 'ze'
     
     skola_out:list[str] = []
-    skola_words = skola.nazev.split()
+    skola_words = skola_str.split()
     for i in range(len(skola_words)):
         ii = skola_words[i]
         iis = slugify(ii)
@@ -155,10 +158,97 @@ def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool
     else:
         return odpoved == reseni
 
-def get_nuts_kraje():
+def get_nuts_kraje() -> "list[tuple[str, str]]":
     rx = re.compile(r'^CZ0..0$')
     out = []
     for nuts, nazev in CZ_NUTS_NAMES.items():
         if rx.match(nuts):
             out.append((nuts, nazev))
     return out
+
+def get_okres_for_kraj(kraj:str) -> "list[tuple[str, str]]":
+    rx = re.compile(kraj[:5] + r'[^0]')
+    out = []
+    for nuts, nazev in CZ_NUTS_NAMES.items():
+        if rx.match(nuts):
+            out.append((nuts, nazev))
+    return out
+
+class BulkMailSender():
+    @classmethod
+    def add_emails(cls, mails:"set[str]", vip:bool):
+        if cache.get('mail_q_appending'):
+            raise Exception('Nelze přidávat maily do fronty, do které se zrovna přidává!')
+        
+        cache.set('mail_q_appending', True)
+        top = cache.get('mail_q_top', 0)
+
+        for mail in mails:
+            cache.set(f'mail_q_mail_{top}', (mail, vip))
+            top += 1
+            cache.set('mail_q_top', top)
+        
+        cache.set('mail_q_appending', False)
+
+    @classmethod
+    def send_mails(cls, count:int = -1):
+        if cache.get('mail_q_sending'):
+            raise Exception('Nelze rozesílat další maily doukud se neposlaly předchozí!')
+
+        cache.set('mail_q_sending', True)
+        t = threading.Thread(target=cls._sender, args=(count,))
+        t.setDaemon(True)
+        t.start()
+
+    @classmethod
+    def _sender(cls, count):
+        n_mails = cache.get('mail_q_top', 0) - cache.get('mail_q_bottom', 0)
+        logger.info(f'Rozesílání {n_mails} pozvánek.')
+        vip_text = KeyValueStore.objects.get(key='pozvanka_vip').val
+        pleb_text = KeyValueStore.objects.get(key='pozvanka').val
+        connection = mail.get_connection()
+
+        connection.open()
+        n_sent = 0
+        error_count = 0
+        while cache.get('mail_q_sending', False) and ((n_sent < count) if count >= 0 else True):
+            read_end = cache.get('mail_q_bottom', 0)
+            write_end = cache.get('mail_q_top', 0)
+            if read_end == write_end:
+                cache.set('mail_q_bottom', 0)
+                cache.set('mail_q_top', 0)
+                cache.set('mail_q_sending', False)
+                break
+            
+            address, vip = cache.get(f'mail_q_mail_{read_end}', (None, None))
+            if address:
+                try:
+                    msg = mail.EmailMessage(
+                        connection = connection,
+                        to = (address,)
+                    )
+                    msg.content_subtype = 'html'
+                    if vip:
+                        msg.body = vip_text
+                        msg.subject = 'VIP Pozvánka'
+                    else:
+                        msg.body = pleb_text
+                        msg.subject = 'Pozvánka'
+                    
+                    msg.send()
+                    if error_count > 0: error_count -= 1
+                except Exception as e:
+                    logger.error(f'Chyba při rezesílání pozvánek: {e}')
+                    error_count += 1
+                    if error_count > 8:
+                        logger.error('Príliš mnoho chyb při odesílání mailů!')
+                        break
+
+                n_sent += 1
+                cache.delete(f'mail_q_mail_{read_end}')
+            
+            cache.set('mail_q_bottom', read_end + 1)
+
+        connection.close()
+        logger.info('Rozesílání pozvánek dokončeno.')
+        cache.set('mail_q_sending', False)

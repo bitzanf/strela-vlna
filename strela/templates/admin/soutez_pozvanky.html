@@ -1,0 +1,64 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Pozvánky do soutěže{% endblock %}
+
+{% block extrajs %}
+<style>
+ul {
+    list-style-type: none;
+}
+</style>
+<script>
+function toggleOkresy(checkbox) {
+    const okresy = $("ul#"+checkbox.id);
+    const toggleState = checkbox.checked;
+
+    for (okres of okresy.children()) {
+        $(okres.firstChild.firstChild).prop("checked", toggleState);
+    }
+}
+
+function partialToggleParent(checkbox) {
+    let partial = checkbox.checked;
+    if (partial) {
+        $("#id_"+checkbox.name).prop("indeterminate", true);
+        return;
+    }
+
+    for (s of $(checkbox).parent().parent().siblings()) {
+        const ss = s.firstChild.firstChild;
+        if (ss.checked) {
+            partial = true;
+            break;
+        }
+    }
+
+    $("#id_"+checkbox.name).prop("indeterminate", partial);
+}
+</script>
+{% endblock %}
+
+{% block content %}
+{% load bootstrap4 %}
+
+<h2>{{ soutez }}</h2><br>
+<p><font size="+1"><b style="color:red;">Text pozvánek pochází z informačních textů!</b></font></p>
+
+<form method="post" autocomplete="off">
+{% csrf_token %}
+{% if 'strela.adminsouteze' not in perms %}
+  <fieldset disabled>
+    {% bootstrap_form form %}
+  </fieldset>
+{% else %}
+<div id="accordion">
+  {% bootstrap_form form %}
+</div>
+{% endif %}
+
+{% buttons %}
+    <button type="submit" class="btn btn-primary" name="b-send">Odeslat pozvánky</button>
+{% endbuttons %}
+</form>
+
+{% endblock %}

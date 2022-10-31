@@ -11,9 +11,9 @@
             <tbody>
                 {% for o in object_list %}
                     <tr class="clickable-row" data-href="{% url 'kontola_odpovedi_detail' o.pk %}" style="cursor: pointer;">
-                        <td>{{ o.otazka.typ }}-{{ o.cisloVSoutezi }} [{{ o.otazka.pk }}]</td>   
+                        <td>{{ o.otazka.otazka.typ }}-{{ o.otazka.cisloVSoutezi }} [{{ o.otazka.otazka.pk }}]</td>   
                         <td>{{ o.tym }} </td> 
-                        <td>{{o.otazka.obtiznost}} - {{ o.otazka.get_obtiznost_display.lower }} </td>   
+                        <td>{{o.otazka.otazka.obtiznost}} - {{ o.otazka.otazka.get_obtiznost_display.lower }} </td>   
                     </tr>
                         {% empty %}
                             <tr><td colspan=3 class="text-center">Žádné otázky k zobrazení</td></tr>
