@@ -2,12 +2,12 @@ from django.contrib import admin
 from django import forms
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import ReadOnlyPasswordHashField
-from django.db.models.query import QuerySet
 from django.utils.timezone import now
 from sequences import get_next_value
 
 from . models import EmailInfo, KeyValueStore, Skola, Soutez_Otazka, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, LogTable, ChatMsgs, ChatConvos
 from . utils import make_tym_login
+from . forms import OtazkaDetailForm
 
 class TymCreationForm(forms.ModelForm):
     password = forms.CharField(label='Password', widget=forms.PasswordInput)
@@ -175,17 +175,33 @@ class SoutezAdmin(admin.ModelAdmin):
             self.form = self.form
         return super(SoutezAdmin, self).get_form(request, obj, **kwargs)
 
+
+class TymSoutezOtazkaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Tym_Soutez_Otazka
+        fields = ('tym', 'otazka', 'stav', 'odpoved', 'bazar', 'bylaPodpora')
+
+    def save(self, commit=True):
+        if self.is_valid():
+            tso:Tym_Soutez_Otazka = super().save(commit=False)
+            tso.skola = tso.tym.skola
+            if commit:
+                tso.save()
+            return tso
+
+class TymSoutezOtazkaAdmin(admin.ModelAdmin):
+    form = TymSoutezOtazkaAdminForm
+    list_display = ('tym', 'otazka', 'stav', 'odpoved', 'bazar')
+    search_fields = ('otazka__cisloVSoutezi', 'tym__jmeno')
+
 class SkolaAdmin(admin.ModelAdmin):
     list_display = ('nazev', 'uzemi')
     search_fields = ('nazev',)
 
-class TymSoutezOtazkaAdmin(admin.ModelAdmin):
-    list_display = ('tym', 'otazka', 'stav', 'odpoved', 'bazar')
-    search_fields = ('otazka__cisloVSoutezi', 'tym__jmeno')
-
 class OtazkaAdmin(admin.ModelAdmin):
-    list_display = ('typ', 'pk','stav','obtiznost','vyhodnoceni')
-    search_fields = ('pk',)
+    list_display = ('typ', 'id', 'stav', 'obtiznost', 'vyhodnoceni', 'obrazek')
+    search_fields = ('id',)
+    form = OtazkaDetailForm
 
 class LogTableAdmin(admin.ModelAdmin):
     list_display = ('tym', 'otazka','soutez','staryStav','novyStav', 'cas')

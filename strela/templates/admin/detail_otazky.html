@@ -20,16 +20,17 @@
             Detail otázky - náhled zadání {{ otazka.typ}}-{{ otazka.pk }}
         </div>
         <div class="card-body">
-            {% latexify otazka.zadani|escape parse_math=True %}
-        </div>    
+            <div>{% latexify otazka.zadani|escape parse_math=True %}</div>
+            {% if img_url %}<div class="mt-4 text-center"><img height="256px" src="{{ img_url }}" /></div>{% endif %}
+        </div> 
     </div>
 </div>
 <div class="row">    
-    <form method="post" autocomplete="off">
+    <form method="post" autocomplete="off" enctype="multipart/form-data">
     {% csrf_token %}
     <div class="card bg-light" style="width:700px">
       <div class="card-header bg-info font-weight-bold">
-        Detail otázky {{ otazka.typ}}-{{ otazka.pk }} aktuální stav
+        Detail otázky {{ otazka.typ }}-{{ otazka.pk }} aktuální stav
           {% if   otazka.stav == 0 %} <span class="badge badge-primary"> {{ otazka.get_stav_display }} </span>
           {% elif otazka.stav == 1 %} <span class="badge badge-success"> {{ otazka.get_stav_display }} </span>
           {% elif otazka.stav == 2 %} <span class="badge badge-danger"> {{ otazka.get_stav_display }} </span>

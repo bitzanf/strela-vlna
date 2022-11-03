@@ -1,8 +1,9 @@
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from . import views 
 
 urlpatterns = [
-    #url(r'^selectable/', include('selectable.urls')),
     path('selectable/', include('selectable.urls')),
 # úvodní část serveru - fialový podklad
     path("", views.SoutezIndex.as_view(), name="index_souteze"),
@@ -58,7 +59,7 @@ urlpatterns = [
 
     path("admin/pozvanky/<int:soutez_pk>", views.AdminPozvanky.as_view(), name="admin_pozvanky"),
 
-#jsapi
+# jsapi
     path("jsapi/hra_index", views.HraIndexJsAPI.as_view(), name="hra_index_jsapi"),
     path("jsapi/hra_vysledky", views.SoutezVysledkyJsAPI.as_view(), name="hra_vysledky_jsapi"),
     path("jsapi/kontrola", views.KontrolaOdpovediJsAPI.as_view(), name="jsapi_kontrola"),
@@ -66,4 +67,6 @@ urlpatterns = [
     path("jsapi/chat/view", views.ChatListJsAPI.as_view(), name="view_chat"),
     path("jsapi/chat/send", views.ChatSend.as_view(), name="send_chat"),
     path('jsapi/chat/list', views.ConvoListJsAPI.as_view(), name="convo_list"),
-]
+] \
+    + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) \
+    + static('/favicon.ico', document_root='static/favicon.ico')

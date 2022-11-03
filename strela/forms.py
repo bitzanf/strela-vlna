@@ -138,18 +138,31 @@ class AdminNovaSoutezForm(forms.ModelForm):
                     'prezencni': ''
                 })
 
-class AdminNovaOtazka(forms.ModelForm):
+class OtazkaDetailForm(forms.ModelForm):
     class Meta:
         model = Otazka
-        fields = ['typ','vyhodnoceni','obtiznost','zadani','reseni']
+        fields = ['typ','vyhodnoceni','obtiznost','zadani','reseni', 'obrazek']
         labels = {
             'typ': 'Typ',
             'vyhodnoceni': 'Vyhodnocení',
             'obtiznost': 'Obtížnost',
             'zadani': 'Zadání',
-            'reseni': 'Řešení'
+            'reseni': 'Řešení',
+            'obrazek': 'Obrázek'
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['obrazek'].max_length = 256
+
+    def clean_obrazek(self):
+        img = self.cleaned_data.get('obrazek', False)
+        if img:
+            if img.size > 5*1024*1024:
+                raise forms.ValidationError('Maximální velikost obrázku je 5MB.')
+            return img
+
+class AdminNovaOtazka(OtazkaDetailForm):
     def clean_zadani(self):
         zadani = self.cleaned_data["zadani"]
         if Otazka.objects.filter(zadani=zadani).exists():

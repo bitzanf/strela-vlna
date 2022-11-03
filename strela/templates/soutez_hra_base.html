@@ -42,7 +42,7 @@
                 <nav class="navbar navbar-expand navbar-dark bg-dark flex-md-column flex-row align-items-start py-2" style="font-size:20px">
                     <div class="collapse navbar-collapse">
                         <ul class="flex-md-column flex-row navbar-nav w-100 justify-content-between">
-                        {% if perms.strela.soutezici and aktivni_soutez and soutez_valid %}
+                        {% if perms.strela.soutezici and aktivni_soutez and soutez_valid and is_user_tym %}
                             <li class="nav-item"><a class="nav-link pl-0 {% if request.path == herni_server__ %} active {% endif %}" href="{% url "herni_server" %}">Můj tým</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 {% if request.path == hra_udalostitymu__ %} active {% endif %}" href="{% url "hra_udalostitymu" %}">Události týmu</a></li>
                             <li class="nav-item"><a class="nav-link pl-0 {% if tym_chat_list__ in request.path %} active {% endif %}" href="{% url "tym_chat_list" %}">Konverzace týmu</a></li>
@@ -60,7 +60,7 @@
             <main class="col">
                 <div class="content">
                 {% bootstrap_messages %}
-                {% if perms.strela.soutezici %}    
+                {% if perms.strela.soutezici and is_user_tym %}
                     {% if aktivni_soutez %}
                         {% if soutez_valid %}
                             {% block content %} {% endblock %}

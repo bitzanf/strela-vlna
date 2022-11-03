@@ -95,7 +95,8 @@
             {% endif %}
         </div>
         <div class="card-body">
-        {% latexify otazka.otazka.zadani|escape parse_math=True %}
+        <div>{% latexify otazka.otazka.zadani|escape parse_math=True %}</div>
+        {% if img_url %}<div class="mt-4 text-center"><img height="256px" src="{{ img_url }}" /></div>{% endif %}
         </div>
     </div>    
 <div class="my-4">

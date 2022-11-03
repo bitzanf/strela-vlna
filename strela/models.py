@@ -4,7 +4,9 @@ from django.db import models, transaction
 from django.core.cache import cache
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, User
 from django.utils.timezone import now
+from django.utils.crypto import get_random_string
 from django.db.models import Q
+from django.db.models.fields.files import ImageFieldFile
 
 import datetime
 import logging
@@ -44,7 +46,6 @@ class Skola(models.Model):
 class TymManager(BaseUserManager):
 
     def create_user(self, login, email, password):
-        print(self.model)
         if self.login and password:
             user = self.model(email=self.normalize_email(email))
             user.set_password(password)
@@ -195,7 +196,7 @@ class Otazka(models.Model):
     obtiznost:str = models.CharField(max_length = 1, choices = FLAGDIFF)
     zadani:str = models.TextField()
     reseni:str = models.CharField(max_length = 250)
-    obrazek:str = models.CharField(max_length = 32, blank=True, null=True)
+    obrazek:ImageFieldFile = models.ImageField(max_length=32, blank=True, null=True, upload_to=(lambda i, f: 'otazky/' + image_random_filename(i, f)))
 
     def __str__(self):
         """F-23: schválená lehká (automaticky)"""
@@ -224,7 +225,7 @@ class Soutez_Otazka(models.Model):
         verbose_name_plural="Otázky v soutéžích"
 
     def __str__(self) -> str:
-        return f'{self.otazka.typ}-{self.otazka.id} [{self.cisloVSoutezi}] ({self.soutez.rok})'
+        return f'{self.otazka.typ}-{self.cisloVSoutezi} [{self.otazka.id}] ({self.soutez.rok})'
 
 class Tym_Soutez_Otazka(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)
@@ -478,3 +479,12 @@ class KeyValueStore(models.Model):
         'pozvanka_vip': 'VIP Pozvánka',
         'pozvanka': 'Pozvánka'
     }
+
+# pokud by to bylo v .utils vznikla by kruhova zavislost :(
+def image_random_filename(instance, filename) -> str:
+    rand_name = get_random_string(length=24) # nechame 8 znaku pro priponu
+    filename = rand_name + '.' + filename.split('.')[-1]
+    if type(instance).objects.filter(~Q(id=instance.id) & Q(obrazek=filename)).exists():  # nemuzeme mit 2 stejne soubory pro ruzne otazky
+        return image_random_filename(instance, filename)
+    else:
+        return filename
