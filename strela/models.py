@@ -58,7 +58,7 @@ class TymManager(BaseUserManager):
 class Tym(AbstractBaseUser):
     login:str = models.CharField(max_length=50, unique=True)
     jmeno:str = models.CharField(max_length=200)
-    skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, related_name='tymy')
+    skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, related_name='tymy', db_index=True)
     email:str = models.EmailField(max_length=256)
     soutezici1:str = models.CharField(max_length=100)
     soutezici2:str = models.CharField(max_length=100, blank=True)
@@ -177,8 +177,8 @@ class Soutez(models.Model):
     
 
 class Tym_Soutez(models.Model):
-    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy")
-    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, related_name="souteze")
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy", db_index=True)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, related_name="souteze", db_index=True)
     penize:int = models.PositiveIntegerField(default=0)
     cislo:int = models.PositiveIntegerField(default=0)
 
@@ -217,7 +217,7 @@ class Otazka(models.Model):
 
 class Soutez_Otazka(models.Model):
     otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, db_index=True)
-    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, db_index=True)
     cisloVSoutezi:int = models.IntegerField(verbose_name="Číslo otázky v soutěži", default=0)
 
     class Meta:
@@ -228,8 +228,8 @@ class Soutez_Otazka(models.Model):
         return f'{self.otazka.typ}-{self.cisloVSoutezi} [{self.otazka.id}] ({self.soutez.rok})'
 
 class Tym_Soutez_Otazka(models.Model):
-    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)
-    skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, null=True) # porusuje zasady spravne databaze, ale urychluje vyhledavani
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True, db_index=True)
+    skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, null=True, db_index=True) # porusuje zasady spravne databaze, ale urychluje vyhledavani
     otazka:Soutez_Otazka = models.ForeignKey(Soutez_Otazka, on_delete=models.CASCADE, related_name='otazky', db_index=True)
     stav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
     odpoved:str = models.CharField(max_length = 128, blank=True)
@@ -356,9 +356,9 @@ class Tym_Soutez_Otazka(models.Model):
     
 
 class LogTable(models.Model):
-    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True)
-    otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, null=True)
-    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, null=True)
+    tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True, db_index=True)
+    otazka:Otazka = models.ForeignKey(Otazka, on_delete=models.CASCADE, null=True, db_index=True)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, null=True, db_index=True)
     cas:datetime.datetime = models.DateTimeField(auto_now=True, db_index=True)
     staryStav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
     novyStav:int = models.PositiveIntegerField(choices = FLAGSOUTEZSTATE)
@@ -403,10 +403,10 @@ class LogTable(models.Model):
 
 
 class EmailInfo(models.Model):
-    odeslal:User = models.ForeignKey(User, on_delete=models.CASCADE)
+    odeslal:User = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     zprava:str = models.TextField()
     kdy:datetime.datetime = models.DateTimeField(auto_now=True)
-    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE)
+    soutez:Soutez = models.ForeignKey(Soutez, on_delete=models.CASCADE, db_index=True)
 
     def __str__(self):
         return "Email id={} odeslal {}".format(self.id, self.odeslal)
@@ -416,8 +416,8 @@ class EmailInfo(models.Model):
         verbose_name_plural="Informační emaily"
 
 class ChatConvos(models.Model):
-    otazka:Tym_Soutez_Otazka = models.ForeignKey(Tym_Soutez_Otazka, on_delete=models.CASCADE, null=True)
-    tym:Tym_Soutez = models.ForeignKey(Tym_Soutez, on_delete=models.CASCADE)
+    otazka:Tym_Soutez_Otazka = models.ForeignKey(Tym_Soutez_Otazka, on_delete=models.CASCADE, null=True, db_index=True)
+    tym:Tym_Soutez = models.ForeignKey(Tym_Soutez, on_delete=models.CASCADE, db_index=True)
     uzavreno:bool = models.BooleanField(default=False)
     uznano:bool = models.BooleanField(default=False)
     sazka:int = models.PositiveIntegerField(default=0)
@@ -432,7 +432,7 @@ class ChatConvos(models.Model):
 class ChatMsgs(models.Model):
     smer:bool = models.BooleanField(verbose_name="směr komunikace (0: tym->podpora; 1: podpora->tym)")   # 0: tym->podpora; 1: podpora->tym
     text:str = models.TextField()
-    konverzace:ChatConvos = models.ForeignKey(ChatConvos, on_delete=models.CASCADE)
+    konverzace:ChatConvos = models.ForeignKey(ChatConvos, on_delete=models.CASCADE, db_index=True)
 
     class Meta:
         verbose_name = "Zpráva chatu"

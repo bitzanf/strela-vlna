@@ -30,7 +30,7 @@ from . constants import CZ_NUTS_NAMES, FLAGDIFF, CENIK, OTAZKASOUTEZ, TYM_DEFAUL
 
 import lxml.html as lxhtml
 
-import re, datetime, logging, os
+import re, datetime, logging
 logger = logging.getLogger(__name__)
 
 

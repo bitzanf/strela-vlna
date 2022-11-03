@@ -1,8 +1,4 @@
-from cProfile import label
-from email.policy import default
 from django import forms
-from pkg_resources import require
-from attr import field
 
 from strela.constants import CZ_NUTS_NAMES
 from .models import KeyValueStore, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
