@@ -14,6 +14,18 @@ logger = logging.getLogger(__name__)
 
 from . constants import *
 
+# pokud by to bylo v .utils vznikla by kruhova zavislost :(
+def image_random_filename(instance, filename) -> str:
+    rand_name = get_random_string(length=24) # nechame 8 znaku pro priponu
+    filename = rand_name + '.' + filename.split('.')[-1]
+    if type(instance).objects.filter(~Q(id=instance.id) & Q(obrazek=filename)).exists():  # nemuzeme mit 2 stejne soubory pro ruzne otazky
+        return image_random_filename(instance, filename)
+    else:
+        return filename
+
+def otazky_filename(instance, filename) -> str:
+    return 'otazky/' + image_random_filename(instance, filename)
+
 class Skola(models.Model):
     nazev:str = models.CharField(max_length=200)
     kratky_nazev:str = models.CharField(max_length=200)
@@ -196,7 +208,7 @@ class Otazka(models.Model):
     obtiznost:str = models.CharField(max_length = 1, choices = FLAGDIFF)
     zadani:str = models.TextField()
     reseni:str = models.CharField(max_length = 250)
-    obrazek:ImageFieldFile = models.ImageField(max_length=32, blank=True, null=True, upload_to=(lambda i, f: 'otazky/' + image_random_filename(i, f)))
+    obrazek:ImageFieldFile = models.ImageField(max_length=32, blank=True, null=True, upload_to=otazky_filename)
 
     def __str__(self):
         """F-23: schválená lehká (automaticky)"""
@@ -479,12 +491,3 @@ class KeyValueStore(models.Model):
         'pozvanka_vip': 'VIP Pozvánka',
         'pozvanka': 'Pozvánka'
     }
-
-# pokud by to bylo v .utils vznikla by kruhova zavislost :(
-def image_random_filename(instance, filename) -> str:
-    rand_name = get_random_string(length=24) # nechame 8 znaku pro priponu
-    filename = rand_name + '.' + filename.split('.')[-1]
-    if type(instance).objects.filter(~Q(id=instance.id) & Q(obrazek=filename)).exists():  # nemuzeme mit 2 stejne soubory pro ruzne otazky
-        return image_random_filename(instance, filename)
-    else:
-        return filename
