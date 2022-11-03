@@ -15,7 +15,7 @@
   <tbody>
     {% for s in soutez_list %}
     <tr class="clickable-row" data-href="{% url 'vysledek-detail' s.pk %}" style="cursor: pointer;">
-        <td>{{ s.nazev }} {{ s.rok }}</td>   
+        <td>{{ s.nazev }} {{ s.rok }} ({{ s.get_prezencni_display }})</td>   
         <td>{{ s.zamereni }} </td>   
         <td>{{ s.souteze.count }}
     </tr> 

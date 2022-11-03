@@ -181,7 +181,6 @@ class OtazkaAdminDetail(LoginRequiredMixin, PermissionRequiredMixin, UpdateView)
             messages.warning(self.request,"Stav otázky nelze změnit, protože byla již schválena")
             return HttpResponseRedirect(reverse_lazy('admin-otazka-detail', args = (formular.pk,)))
         else:
-            print (self.request.POST)
             if 'b-ulozit' in form.data:
                 if Otazka.objects.filter(zadani=formular.zadani).exclude(pk=formular.pk).exists():
                     messages.warning(self.request,"Otázku nelze uložit, protože existuje jiná otázka se stejným zadáním.")
@@ -452,12 +451,21 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         context['spustitelna'] = True
         context['nespustitelna_proc'] = ''
 
+        context['tlacitko_vysledky'] = \
+            self.object.zahajena \
+            and ( \
+                Soutez.get_aktivni(admin=True) == self.object \
+                or datetime.timedelta(minutes=(120 + self.object.delkam)) + self.object.zahajena > now()
+            ) \
+            and self.object.rok == now().year \
+            and not self.object.registrace
+
         if self.object.rok != now().year:
             context['spustitelna'] = False
             context['nespustitelna_proc'] = 'Nelze spustit soutěž, která není letošní.'
         elif self.object.get_aktivni():
             context['spustitelna'] = False
-            context['nespustitelna_proc'] = 'Nelze spustit již probíhající soutěž.'
+            context['nespustitelna_proc'] = 'Nelze spustit soutěž, pokud již nějaká běží.'
         elif self.object.registrace:
             context['spustitelna'] = False
             context['nespustitelna_proc'] = 'Nelze spustit soutěž, do které je ještě možné se registrovat.'
@@ -560,12 +568,15 @@ class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView)
         context = super().get_context_data(**kwargs)
         
         context['soutez'] = soutez
-        if Soutez.get_aktivni(admin=True) == soutez or soutez.zahajena is None:
-            context['soutez_valid'] = True
-        else:
-            context['soutez_valid'] = False
-        #context['prihlaseno'] = Tym_Soutez.objects.filter(soutez=soutez).count()
-        #context['form'] = self.get_form
+        context['soutez_valid'] = \
+            soutez.zahajena \
+            and ( \
+                Soutez.get_aktivni(admin=True) == soutez \
+                or datetime.timedelta(minutes=(120 + soutez.delkam)) + soutez.zahajena > now()
+            ) \
+            and soutez.rok == now().year \
+            and not soutez.registrace \
+            and soutez.prezencni == 'P'
 
         return context
 
@@ -922,8 +933,14 @@ class HraIndexJsAPI(TemplateView):
 
             n_bazar_qs = Tym_Soutez_Otazka.objects.filter(
                 Q(otazka__soutez=context["aktivni_soutez"])
-                    & ((Q(stav=5) & ~Q(skola=context['tym'].tym.skola))
-                    | Q(id__in=Tym_Soutez_Otazka.objects.filter(skola=context['tym'].tym.skola, stav=5).values_list('id', flat=True)))
+                    & (
+                        (
+                            Q(stav=5)
+                         & ~Q(skola=context['tym'].tym.skola)
+                        )
+                      | Q(id__in=Tym_Soutez_Otazka.objects.filter(skola=context['tym'].tym.skola, stav=5).values_list('id', flat=True))
+                    )
+                    & ~Q(tym=self.request.user)
             ).values('otazka__otazka__obtiznost').annotate(total=Count('otazka__otazka__obtiznost'))
 
             n_nove:dict[str, int] = { 'A' : 0 }
@@ -1403,15 +1420,16 @@ class PodporaChat(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
         self.request.session['id_konverzace'] = id_konverzace
         self.request.session['chat_redirect_target'] = reverse_lazy('podpora_chat', args=(id_konverzace,))
         try:
-            convo = ChatConvos.objects.get(pk=id_konverzace)
+            convo:ChatConvos = ChatConvos.objects.get(pk=id_konverzace)
             context['sazka_tymu'] = convo.sazka
             context['vyreseno'] = convo.uzavreno
-            context['otazka'] = convo.otazka.otazka
-            context['odpoved'] = convo.otazka.odpoved
+            if convo.otazka:
+                context['otazka'] = convo.otazka.otazka
+                context['odpoved'] = convo.otazka.odpoved
             context['uznano'] = convo.uznano
         except Exception as e:
             messages.error(self.request, "Chyba {}".format(e))
-            logger.error("Konverzace s id {} nenalezena".format(id_konverzace))
+            logger.error("Konverzace s id {} nenalezena ({})".format(id_konverzace, e))
         return context
     
 

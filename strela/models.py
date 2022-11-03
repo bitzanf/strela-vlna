@@ -292,7 +292,8 @@ class Tym_Soutez_Otazka(models.Model):
         if tym_soutez.penize >= CENIK[obtiznost][2]:
             otazky = Tym_Soutez_Otazka.objects.filter(stav=5, otazka__soutez=soutez, otazka__otazka__obtiznost=obtiznost)
             otazky = otazky.exclude(
-                id__in=Tym_Soutez_Otazka.objects.filter((~Q(stav=5)) & Q(skola=tym.skola)).values_list('id', flat=True)
+                Q(id__in=Tym_Soutez_Otazka.objects.filter((~Q(stav=5)) & Q(skola=tym.skola)).values_list('id', flat=True))
+              | Q(tym=tym)  # nechceme, aby si tym koupil z bazaru vlastni otazku
             ).order_by('?')[:1]
 
             if len(otazky) == 0:
@@ -320,7 +321,6 @@ class Tym_Soutez_Otazka(models.Model):
         LogTable.objects.create(tym=self.tym, otazka=self.otazka.otazka, soutez=self.otazka.soutez, staryStav=self.stav, novyStav=5)
         
         team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.tym, soutez=self.otazka.soutez)
-        self.tym = None
         if self.otazka.otazka.obtiznost != "A":
             self.bazar = True
         self.stav = 5
