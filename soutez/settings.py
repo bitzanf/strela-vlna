@@ -24,7 +24,6 @@ STRELA_VERZE = '2.2.1'
 DEBUG = True
 #DEBUG = False
 
-ALLOWED_HOSTS = ['89.203.249.42']
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Application definition

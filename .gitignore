@@ -15,3 +15,4 @@
 /fixtures
 /skripty
 /soutez/settings_internal.py
+/soutez/wsgi.py
