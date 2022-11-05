@@ -1525,7 +1525,7 @@ class QRClanek(TemplateView):
         return ctx
 
 class AdminTextList(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
-    permission_required = 'strela.adminsouteze'   
+    permission_required = ('strela.adminsouteze', 'strela.novasoutez')
     template_name = 'admin/admin_text_list.html'
     login_url = reverse_lazy("admin_login")
 
@@ -1548,7 +1548,7 @@ class AdminTextList(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
 
 class AdminText(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, TemplateView):
     permission_required = 'strela.adminsouteze'
-    template_name = 'admin/admin_text.html'
+    template_name = ('admin/admin_text.html', 'strela.novasoutez')
     login_url = reverse_lazy("admin_login")
     form_class = AdminTextForm
 

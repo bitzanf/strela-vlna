@@ -78,7 +78,7 @@
                             {% else %}
                                 <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Technická podpora</a></li>
                             {% endif %}
-                            {% if 'strela.adminsouteze' in perms %}
+                            {% if 'strela.novasoutez' in perms %}
                                 <li class="nav-item"><a class="nav-link pl-0 {% if text_list__ in request.path %} active {% endif %}" href="{% url "admin_text_list" %}">Informační texty</a></li>
                             {% else %}
                                 <li class="nav-item"><a class="nav-link pl-0 disabled" href="#">Informační texty</a></li>

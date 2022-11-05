@@ -196,12 +196,12 @@ class BulkMailSender():
             raise Exception('Nelze rozesílat další maily doukud se neposlaly předchozí!')
 
         cache.set('mail_q_sending', True)
-        t = threading.Thread(target=cls._sender, args=(count,))
+        t = threading.Thread(target=cls._sender, args=(count, 100))
         t.setDaemon(True)
         t.start()
 
     @classmethod
-    def _sender(cls, count):
+    def _sender(cls, count, count_per_session):
         n_mails = cache.get('mail_q_top', 0) - cache.get('mail_q_bottom', 0)
         logger.info(f'Rozesílání {n_mails} pozvánek.')
         vip_text = KeyValueStore.objects.get(key='pozvanka_vip').val
@@ -210,6 +210,7 @@ class BulkMailSender():
 
         connection.open()
         n_sent = 0
+        n_sent_this_session = 0
         error_count = 0
         while cache.get('mail_q_sending', False) and ((n_sent < count) if count >= 0 else True):
             read_end = cache.get('mail_q_bottom', 0)
@@ -236,16 +237,24 @@ class BulkMailSender():
                         msg.subject = 'Pozvánka'
                     
                     msg.send()
-                    if error_count > 0: error_count -= 1
+                    error_count = 0
+                    cache.set('mail_q_last_succesful', read_end)
+                    cache.delete(f'mail_q_mail_{read_end}')
                 except Exception as e:
                     logger.error(f'Chyba při rezesílání pozvánek: {e}')
                     error_count += 1
                     if error_count > 8:
                         logger.error('Príliš mnoho chyb při odesílání mailů!')
+                        cache.set('mail_q_bottom', cache.get('mail_q_last_succesful', 0) + 1)
                         break
 
                 n_sent += 1
-                cache.delete(f'mail_q_mail_{read_end}')
+                n_sent_this_session += 1
+
+                if n_sent_this_session > count_per_session and count_per_session > 0:
+                    connection.close()
+                    connection.open()
+                    n_sent_this_session = 0
             
             cache.set('mail_q_bottom', read_end + 1)
 
