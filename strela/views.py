@@ -1547,8 +1547,8 @@ class AdminTextList(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
         return ctx
 
 class AdminText(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, TemplateView):
-    permission_required = 'strela.adminsouteze'
-    template_name = ('admin/admin_text.html', 'strela.novasoutez')
+    permission_required = ('strela.adminsouteze', 'strela.novasoutez')
+    template_name = 'admin/admin_text.html'
     login_url = reverse_lazy("admin_login")
     form_class = AdminTextForm
 
