@@ -15,7 +15,8 @@
                 Detail otázky - náhled zadání {{ object.typ }}-{{ object.pk }}
             </div>
             <div class="card-body">
-                {% latexify object.zadani|escape parse_math=True %}
+                <div>{% latexify object.zadani|escape parse_math=True %}</div>
+                {% if object.obrazek %}<div class="mt-4 text-center"><img height="256px" src="{{ object.obrazek.url }}" /></div>{% endif %}
             </div>  
             <div class="card-footer text-center">
                 {% buttons %}
