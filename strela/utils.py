@@ -206,6 +206,8 @@ class BulkMailSender():
         logger.info(f'Rozesílání {n_mails} pozvánek.')
         vip_text = KeyValueStore.objects.get(key='pozvanka_vip').val
         pleb_text = KeyValueStore.objects.get(key='pozvanka').val
+        vip_subject = cache.get('mail_q_subject_vip', 'VIP Pozvánka')
+        pleb_subject = cache.get('mail_q_subject', 'Pozvánka')
         connection = mail.get_connection()
 
         connection.open()
@@ -231,10 +233,10 @@ class BulkMailSender():
                     msg.content_subtype = 'html'
                     if vip:
                         msg.body = vip_text
-                        msg.subject = 'VIP Pozvánka'
+                        msg.subject = vip_subject
                     else:
                         msg.body = pleb_text
-                        msg.subject = 'Pozvánka'
+                        msg.subject = pleb_subject
                     
                     msg.send()
                     error_count = 0

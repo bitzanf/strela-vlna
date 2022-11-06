@@ -1606,6 +1606,9 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
         rx = re.compile(r'kraj-CZ0.{3}')
         send_btn = 'b-send' in form.data
         skoly_mails = set()
+
+        cache.set('mail_q_subject', form.data['pleb_subject'])
+        cache.set('mail_q_subject_vip', form.data['vip_subject'])
         
         def update_mails(s):
             skoly_mails.update(s.values_list('email1', flat=True))
@@ -1617,6 +1620,12 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
             try: s.remove('')
             except: pass
 
+        vip_skoly_all = Tym_Soutez.objects.filter(
+            soutez__in=Soutez.objects.filter(
+                rok__in=(now().year, now().year-1)
+            ).exclude(id=soutez.id)
+        ).distinct()
+
         # vsechny skoly ze vsech okresu vybranych ve formulari
         allowed_ids = set()
         for k in form.data:
@@ -1624,30 +1633,24 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
             else:
                 vl = self.request.POST.getlist(k)
                 skoly = Skola.objects.filter(region=k[8], kraj=k[9])    # k = (napr.) kraj-CZ0100
-                allowed_ids.update(skoly.values_list('id', flat=True))
                 if 'on' in vl:
-                    update_mails(skoly)
+                    allowed_ids.update(skoly.values_list('id', flat=True))
+                    update_mails(skoly.exclude(
+                        id__in=vip_skoly_all.values_list('tym__skola__id', flat=True)
+                    ))
                 else:
                     for v in vl:
                         skoly = skoly.filter(okres=v[5])
                         allowed_ids.update(skoly.values_list('id', flat=True))
-                        update_mails(skoly)
+                        update_mails(skoly.exclude(
+                            id__in=vip_skoly_all.values_list('tym__skola__id', flat=True)
+                        ))
         clean_set(skoly_mails)
-        
+
         # vsechny skoly, ktere jsou ve vybranych regionech a jejichz tymy se
         # v poslednich 2 letech ucastnily nejakych soutezi
-        vip_mails = set()
-        vip_skoly = Skola.objects.filter(
-            Q(id__in=Tym_Soutez.objects.filter(
-                soutez__in=Soutez.objects.filter(
-                    rok__in=(now().year, now().year-1)
-                ).exclude(id=soutez.id)
-            ).distinct().values_list('tym__skola', flat=True))
-          & Q(id__in=allowed_ids)
-        ).distinct()
-
-        vip_mails.update(vip_skoly.values_list('email1', flat=True))
-        vip_mails.update(vip_skoly.values_list('email2', flat=True))
+        vip_skoly = vip_skoly_all.filter(tym__skola__id__in=allowed_ids).distinct()
+        vip_mails = set(vip_skoly.values_list('tym__email', flat=True))
         clean_set(vip_mails)
 
         skoly_mails = skoly_mails.difference(vip_mails)

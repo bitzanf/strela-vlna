@@ -3,6 +3,7 @@ from django import forms
 from strela.constants import CZ_NUTS_NAMES
 from .models import KeyValueStore, Tym, Soutez, Tym_Soutez, Otazka, Tym_Soutez_Otazka, EmailInfo
 from django.utils.timezone import now
+from django.core.cache import cache
 from bootstrap_datepicker_plus.widgets import DateTimePickerInput   # 9.10.2022 - nefunguje, opraveno na .widgets
 from .lookups import SkolaLookup
 from selectable.forms.widgets import AutoCompleteSelectWidget
@@ -287,6 +288,8 @@ class OkresyField(forms.MultiValueField):
 
 class AdminPozvankyForm(forms.Form):
     soutez_pk:int
+    vip_subject = forms.CharField(max_length=256, label='Předmět VIP pozvánky')
+    pleb_subject = forms.CharField(max_length=256, label='Předmět pozvánky')
 
     def __init__(self, *args, **kwargs):
         self.soutez_pk = kwargs.pop('soutez_pk')
@@ -296,6 +299,9 @@ class AdminPozvankyForm(forms.Form):
             self.fields.update({
                 'kraj-'+kraj: OkresyField(kraj)
             })
+        
+        self.fields['vip_subject'].initial = cache.get('mail_q_subject_vip', '')
+        self.fields['pleb_subject'].initial = cache.get('mail_q_subject', '')
 
     def is_valid(self) -> bool:
         return True
