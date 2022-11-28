@@ -14,12 +14,12 @@
     {% bootstrap_css %}
     {% bootstrap_javascript jquery='full' %}
     <script type="text/javascript">
-        var soutez_start = new Date("{{ soutez.zahajena.isoformat }}");
+        var soutez_start = null;
         var soutez_len = {{ soutez.delkam }};
     </script>
 </head>
 
-<body class="d-flex flex-column min-wh-100">
+<body class="d-flex flex-column min-wh-100" style="overflow-x: hidden;">
     <nav class="navbar navbar-expand-sm bg-purple navbar-dark" style="font-size:20px">
         <a class="navbar-brand" href="{% url "index_souteze" %}">
             <img src="/static/img/Logo-pruhledne-60px.png"  alt="Strela Vlna">
@@ -33,15 +33,16 @@
 
     <div class="content">
         {% bootstrap_messages %}
-
-        <h1 style="text-align: center;">{{ soutez.pretty_name }}</h1>
-
         <!--<div class="alert alert-danger" role="alert">
             <h4 class="alert-heading">Hodiny</h4>
             <div class="mb-0">
                 Nechce se mi to teď implementovat...
             </div>
         </div>-->
+
+        <div id="fullscreen_target">
+
+        <h1 id="nazev_souteze" style="text-align: center;">{{ soutez.pretty_name }}</h1>
 
         <div class="clock">
             <!--https://dev.to/code_mystery/simple-analog-clock-using-html-css-javascript-2c6a-->
@@ -60,12 +61,25 @@
         </div>
 
         <div class="timer w-50 mx-auto"></div>
+        </div>
 
-        {% if soutez.prezencni == 'P' %}<button id="startbtn" type="button" class="btn btn-success" onclick="startSoutez();">Zahájit soutěž</button>{% endif %}
+        {% if soutez.prezencni == 'P' %}
+        <button id="startbtn" type="button" class="btn btn-success" onclick="startSoutez();">Zahájit soutěž</button>
+        <button id="fullscreen" type="button" class="btn btn-primary" onclick="fullscreen();">Celá obrazovka</button>
+        <div>Délka soutěže: <b>{{ soutez.delkam }} minut</b></div>
+        <div>
+            <label for="manualTime">Ruční zadání zbývajícího času</label>
+            <input id="manualTime" name="manualTime" type="number" min="0" max="{{ soutez.delkam }}">
+        </div>
+        <div>
+            <label for="showSeconds">Zobrazovat sekundy</label>
+            <input id="showSeconds" name="showSeconds" type="checkbox" onclick="toggleShowSeconds(this);">
+        </div>
+        {% endif %}
     </div>
 
     <footer class="mt-auto">
-        <div class="row ml-3">
+        <div class="row">
             <div class="col">
                 <h4>Kde nás najdete?</h4>
                 <a href="https://www.gchd.cz">Gymnázium Christiana Dopplera</a><br>
@@ -79,9 +93,9 @@
                 Metro B - <b>Národní třída</b> a poté tramvají 9 nebo 22 <br>
             </div>
         </div>
-        <div class="row ml-3">
+        <div class="row">
             <div class="col text-center">
-                Copyright &copy; 2021 Střela &amp; Vlna Verze {{ strela_verze }}&nbsp;&nbsp;<b>Filip Bitzan</b>&nbsp;&nbsp;All rights reserved.
+                Copyright &copy; 2021-{% now "Y" %} Střela &amp; Vlna Verze {{ strela_verze }} (Django {{ django_verze }})&nbsp;&nbsp;<b>Filip Bitzan</b>&nbsp;&nbsp;All rights reserved.
             </div>
         </div>
     </footer>
