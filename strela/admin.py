@@ -189,6 +189,20 @@ class TymSoutezOtazkaAdminForm(forms.ModelForm):
                 tso.save()
             return tso
 
+class OtazkaAdminForm(OtazkaDetailForm):
+    class Meta(OtazkaDetailForm.Meta):
+        fields = ['typ', 'vyhodnoceni', 'obtiznost', 'stav', 'zadani' ,'reseni', 'obrazek']
+        labels = {
+            'typ': 'Typ',
+            'vyhodnoceni': 'Vyhodnocení',
+            'obtiznost': 'Obtížnost',
+            'zadani': 'Zadání',
+            'reseni': 'Řešení',
+            'obrazek': 'Obrázek',
+            'stav': 'Stav'
+        }
+
+
 class TymSoutezOtazkaAdmin(admin.ModelAdmin):
     form = TymSoutezOtazkaAdminForm
     list_display = ('tym', 'otazka', 'stav', 'odpoved', 'bazar')
@@ -201,11 +215,11 @@ class SkolaAdmin(admin.ModelAdmin):
 class OtazkaAdmin(admin.ModelAdmin):
     list_display = ('typ', 'id', 'stav', 'obtiznost', 'vyhodnoceni', 'obrazek')
     search_fields = ('id',)
-    form = OtazkaDetailForm
+    form = OtazkaAdminForm
 
 class LogTableAdmin(admin.ModelAdmin):
     list_display = ('tym', 'otazka','soutez','staryStav','novyStav', 'cas')
-    search_fields = ('tym__jmeno', 'otazka__otazka__pk')
+    search_fields = ('tym__jmeno', 'otazka__pk')
 
 class EmailInfoAdmin(admin.ModelAdmin):
     list_display = ('odeslal','soutez','kdy')

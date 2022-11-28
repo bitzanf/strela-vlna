@@ -49,7 +49,8 @@
                 <span class="badge badge-secondary">Sázka týmu: {{ sazka_tymu|default:'0' }} DC<span class="equalsignshift" style="left: -12px; top: -1px">=</span></span>
             </div>
             <div class="card-body">
-            {% latexify otazka.otazka.zadani|escape parse_math=True %}
+            <div>{% latexify otazka.otazka.zadani|escape parse_math=True %}</div>
+            {% if img_url %}<div class="mt-4 text-center"><img width="50%" src="{{ img_url }}" /></div>{% endif %}
             </div>
         </div>
     </div>

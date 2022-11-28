@@ -74,6 +74,7 @@ class AdministraceIndex(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
             stavy.append((
                 (
                     skola_obj.kratce,
+                    skola_obj.nazev,
                     Tym_Soutez.objects.filter(
                         soutez=soutez,
                         tym__skola=skola).count()
@@ -287,6 +288,12 @@ class KontrolaOdpovediDetail(LoginRequiredMixin, PermissionRequiredMixin, Update
     model = Tym_Soutez_Otazka
     fields = []
     success_url = reverse_lazy("kontrola_odpovedi")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        if self.object.otazka.otazka.obrazek:
+            ctx['img_url'] = self.object.otazka.otazka.obrazek.url
+        return ctx
 
     @transaction.atomic
     def form_valid(self, form):
@@ -1079,7 +1086,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
                 konverzace = ChatConvos.objects.get(otazka=self.object, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=self.object.otazka.soutez))
                 self.request.session['id_konverzace'] = konverzace.pk
                 context['sazka_tymu'] = konverzace.sazka
-            except ChatConvos.DoesNotExist:
+            except (ChatConvos.DoesNotExist, Tym_Soutez.DoesNotExist):
                 self.request.session['id_konverzace'] = None
 
         return context
@@ -1128,7 +1135,7 @@ class HraOtazkaDetail(LoginRequiredMixin, UpdateView):
             LogTable.objects.create(tym=formular.tym, otazka=formular.otazka.otazka, soutez=formular.otazka.soutez, staryStav=formular.stav, novyStav=4)
             formular.odpoved = form.cleaned_data.get("odpoved")
 
-            konverzace = formular.send_to_brazil(self.request.user, form.cleaned_data.get('sazka'))
+            konverzace = formular.send_to_brazil(self.request.user, form.cleaned_data.get('sazka') or 0)
             team = Tym_Soutez.objects.get(tym=self.object.tym, soutez=self.object.otazka.soutez)
             if konverzace.sazka > CENIK[self.object.otazka.otazka.obtiznost][0] * 2:
                 konverzace.sazka = CENIK[self.object.otazka.otazka.obtiznost][0] * 2
@@ -1213,7 +1220,10 @@ class ConvoListJsAPI(ListView):
 
     def get_queryset(self):
         if isinstance(self.request.user, Tym):
-            return ChatConvos.objects.filter(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
+            try:
+                return ChatConvos.objects.filter(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
+            except Tym_Soutez.DoesNotExist:
+                return ChatConvos.objects.none()
         elif self.request.user.has_perm('strela.podpora'):
             return ChatConvos.objects.filter(tym__soutez=Soutez.get_aktivni(admin=True))
         else:
@@ -1240,7 +1250,7 @@ class ChatListJsAPI(TemplateView):
         if isinstance(self.request.user, Tym):
             try:
                 convo = ChatConvos.objects.get(id=convo_id, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
-            except ChatConvos.DoesNotExist:
+            except (ChatConvos.DoesNotExist, Tym_Soutez.DoesNotExist):
                 context['chat_errormsg'] = "Tato konverzace buď neexistuje anebo k ní nemáte přístup"
                 return context
             tym2podpora = True
@@ -1291,7 +1301,7 @@ class ChatSend(FormMixin, View):
             smer = 0
             try:
                 convo = ChatConvos.objects.get(id=convo_id, tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()))
-            except ChatConvos.DoesNotExist:
+            except (ChatConvos.DoesNotExist, Tym_Soutez.DoesNotExist):
                 messages.error(self.request, "Konverzace nebyla nalezena")
                 return HttpResponseRedirect(reverse_lazy('herni_server'))
 
@@ -1426,6 +1436,8 @@ class PodporaChat(LoginRequiredMixin, PermissionRequiredMixin, TemplateView):
             if convo.otazka:
                 context['otazka'] = convo.otazka.otazka
                 context['odpoved'] = convo.otazka.odpoved
+                if convo.otazka.otazka.otazka.obrazek:
+                    context['img_url'] = convo.otazka.otazka.otazka.obrazek.url
             context['uznano'] = convo.uznano
         except Exception as e:
             messages.error(self.request, "Chyba {}".format(e))
@@ -1461,12 +1473,16 @@ class TymChatList(LoginRequiredMixin, FormMixin, TemplateView):
     @transaction.atomic
     def form_valid(self, form):
         if 'b-kontaktovat' in form.data:
+            soutez = Soutez.get_aktivni()
+            if soutez is None:
+                messages.error(self.request, 'Nemůžete kontaktovat podporu v soutěži, která neběží.')
+                return HttpResponseRedirect(reverse_lazy('tym_chat_list'))
             try:
-                konverzace:ChatConvos = ChatConvos.objects.get(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()), otazka=None)
+                konverzace:ChatConvos = ChatConvos.objects.get(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=soutez), otazka=None)
                 konverzace.uzavreno = False
                 konverzace.save()
             except ChatConvos.DoesNotExist:
-                konverzace = ChatConvos.objects.create(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=Soutez.get_aktivni()), uzavreno=False)
+                konverzace = ChatConvos.objects.create(tym=Tym_Soutez.objects.get(tym=self.request.user, soutez=soutez), uzavreno=False)
             return HttpResponseRedirect(reverse_lazy('tym_chat', args=(konverzace.pk,)))
         return HttpResponseRedirect(reverse_lazy('tym_chat_list'))
 
@@ -1487,6 +1503,7 @@ class TymChat(LoginRequiredMixin, TemplateView):
             context["soutez_valid"] = True if aktivni_soutez.prezencni == 'O' else False
         else:
             context["aktivni_soutez"] = False
+            return context
         self.request.session['id_konverzace'] = id_konverzace
         self.request.session['chat_redirect_target'] = reverse_lazy('tym_chat', args=(id_konverzace,))
         try:

@@ -13,6 +13,13 @@
     </div>
     <ul class="list-group list-group-flush">
         <li class="list-group-item" style="background-color: #00000006">{% latexify object.otazka.otazka.zadani|escape parse_math=True %}</li>
+        {% if img_url %}
+            <li class="list-group-item" style="background-color: #00000006">
+                <div class="text-center">
+                    <img width="50%" src="{{ img_url }}" />
+                </div>
+            </li>
+        {% endif %}
         <li class="list-group-item"><span style="color: #ff00ff">Správné řešení: </span>{{ object.otazka.otazka.reseni|escape }}</li>
         <li class="list-group-item"><span style="color: #ff00ff">Odpověď týmu: </span>{{ object.odpoved|escape }}</li>
     </ul> 

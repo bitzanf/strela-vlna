@@ -149,10 +149,9 @@ def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool
     rx = re.compile(r'^[\d\+\-\*/,.\(\)]+$')
     if rx.match(odpoved) and rx.match(reseni):
         try:
-            # return abs(1 - (eval(odpoved.replace(',', '.')) / eval(reseni.replace(',', '.')))) < odchylka
             nReseni = eval(reseni.replace(',', '.'))
             nOdpoved = eval(odpoved.replace(',', '.'))
-            return abs(nReseni - nOdpoved) < nReseni * odchylka
+            return abs(nReseni - nOdpoved) < abs(nReseni * odchylka)
         except Exception:
             return False
     else:
@@ -246,7 +245,7 @@ class BulkMailSender():
                     logger.error(f'Chyba při rezesílání pozvánek: {e}')
                     error_count += 1
                     if error_count > 8:
-                        logger.error('Príliš mnoho chyb při odesílání mailů!')
+                        logger.error(f'Príliš mnoho chyb při odesílání mailů! (odesláno {n_sent} mailů)')
                         cache.set('mail_q_bottom', cache.get('mail_q_last_succesful', 0) + 1)
                         break
 
@@ -257,9 +256,10 @@ class BulkMailSender():
                     connection.close()
                     connection.open()
                     n_sent_this_session = 0
+                    logger.info(f'Restart spojení, celkem odesláno {n_sent}')
             
             cache.set('mail_q_bottom', read_end + 1)
 
         connection.close()
-        logger.info('Rozesílání pozvánek dokončeno.')
+        logger.info(f'Rozesílání pozvánek dokončeno (odesláno {n_sent} mailů).')
         cache.set('mail_q_sending', False)
