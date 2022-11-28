@@ -38,6 +38,6 @@ class Command(BaseCommand):
                     .order_by('?')[:pocet] \
                     .values_list('id', flat=True)
                 print(f'Recyklace {otazky.count()} otázek obtížnosti {o}')
-                Tym_Soutez_Otazka(id__in=list(otazky)).delete()
+                Tym_Soutez_Otazka.objects.filter(id__in=list(otazky)).delete()
             except Exception as e:
                 print(f'Chyba při recyklaci otázek! {e}')
