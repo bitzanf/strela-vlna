@@ -34,8 +34,10 @@ class Command(BaseCommand):
 
         for o in obtiznosti.upper():
             try:
-                otazky = Tym_Soutez_Otazka.objects.filter(otazka__soutez=soutez, otazka__otazka__obtiznost=o).order_by('?')[:pocet]
+                otazky = Tym_Soutez_Otazka.objects.filter(otazka__soutez=soutez, otazka__otazka__obtiznost=o) \
+                    .order_by('?')[:pocet] \
+                    .values_list('id', flat=True)
                 print(f'Recyklace {otazky.count()} otázek obtížnosti {o}')
-                otazky.delete()
+                Tym_Soutez_Otazka(id__in=list(otazky)).delete()
             except Exception as e:
                 print(f'Chyba při recyklaci otázek! {e}')
