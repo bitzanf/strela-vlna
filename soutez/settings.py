@@ -20,10 +20,6 @@ STRELA_VERZE = '2.3.2'
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-#DEBUG = False
-
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 # Application definition
