@@ -15,7 +15,7 @@
     {% bootstrap_javascript jquery='full' %}
     <script type="text/javascript">
         var soutez_start = null;
-        var soutez_len = {{ soutez.delkam }};
+        var soutez_len = {{ soutez.delkam|default:"0" }};
     </script>
 </head>
 

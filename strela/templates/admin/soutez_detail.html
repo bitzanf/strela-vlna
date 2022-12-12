@@ -5,7 +5,13 @@
     <script language="javascript">
         $(function () {
             $('[data-toggle="tooltip"]').tooltip()
-        })
+        });
+
+        $(document).ready(function() {
+            $(".clickable-row").click(function() {
+                window.location = $(this).data("href");
+            });
+        });
     </script>
 {% endblock %}
 
@@ -40,18 +46,20 @@
                 </td>
             </tr>
             {% endif %}
-            <tr><td class="font-weight-bold">Přihlášeno týmů:</td><td> {{prihlaseno | default:"Není přihlášen žádný tým" }}</td>
+            <tr><td class="font-weight-bold">Přihlášeno týmů:</td>
+                <td>{{ prihlaseno | default:"Není přihlášen žádný tým" }} {% if prihlaseno_skol > 0 %}<i>({{ prihlaseno_skol }})</i>{% endif %}</td>
                 <td>
                     {% if soutez.is_soutez_full %}
                         <span class="badge badge-danger">Zaplněno</span> 
                     {% else %}   
                         <span class="badge badge-success">Volno</span>
                     {% endif %}   
-                </td></tr>
-                {% if soutez.prezencni == 'O' %}<tr><td class="font-weight-bold">Délka soutěže v minutách:</td><td>{{soutez.delkam}}</td><td></td></tr>{% endif %}
+                </td>
+            </tr>
+            <tr><td class="font-weight-bold">Délka soutěže v minutách:</td><td>{{soutez.delkam}}</td><td></td></tr>
         </table>  
     </div>    
-    <div class="col-sm-4">  
+    <div class="col-sm-4">
         <table class="table table-hover mt-1 table-sm table-responsive">
             <thead>
                 <tr>
@@ -89,7 +97,7 @@
            </tbody>
        </table>
     </div>
-</div>   
+</div>
 <div class="row">
     <form method="post" autocomplete="off">
         {% csrf_token %}
@@ -107,8 +115,8 @@
             {% endif %}
         {% endbuttons %}  
     </form>
-</div> 
-<div class="row mb-3">
+</div>
+<div class="row mb-4">
 {% if v_soutezi_celkem == 0 %}
     <a href="#" class="btn btn-primary disabled ">Generovat PDF zadání</a>
     <a href="#" class="btn btn-primary ml-1 disabled">Generovat PDF výsledky</a>
@@ -116,7 +124,47 @@
     <a href="{% url 'admin_pdf_zadani' soutez.pk %}" class="btn btn-primary">Generovat PDF zadání</a>
     <a href="{% url 'admin_pdf_vysledky' soutez.pk %}" class="btn btn-primary ml-1">Generovat PDF výsledky</a>
 {% endif %}
-</div>  
+</div>
+<div class="row mb-3">
+    <form method="get" autocomplete="off">
+        <span class="font-weight-bold">Vyhledání otázky podle čísla:</span>
+        <div class="input-group">
+            <input class="form-control" type="number" min="0" name="cisloOtazky" placeholder="Číslo otázky">
+            <span class="input-group-btn ml-4">
+                <button type="submit" class="btn btn-primary">Vyhledat</button>
+            </span>
+        </div>
+    </form>
+</div>
+{% if otazka_search %}
+<div class="row mb-3">
+    <table class="table table-hover">
+        <thead>
+             <tr>
+                <th scope="col">Typ</th>
+                <th scope="col">Číslo</th>
+                <th scope="col">Obtížnost</th>
+                <th scope="col">Vyhodnocení</th>
+                <th scope="col">Stav</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="clickable-row" data-href="{% url 'admin-otazka-detail' otazka_search.pk %}" style="cursor: pointer;">
+                <td>{{ otazka_search.get_typ_display }}</td>
+                <td>{{ otazka_search_num }} [{{ otazka_search.pk }}]</td>
+                <td>{{ otazka_search.obtiznost }} - {{ otazka_search.get_obtiznost_display }} </td>
+                <td>{{ otazka_search.vyhodnoceni }} - {{ otazka_search.get_vyhodnoceni_display }} </td>
+                <td>
+                    {% if   otazka_search.stav == 0 %} <span class="badge badge-primary"> {{ otazka_search.get_stav_display }} </span>
+                    {% elif otazka_search.stav == 1 %} <span class="badge badge-success"> {{ otazka_search.get_stav_display }} </span>
+                    {% elif otazka_search.stav == 2 %} <span class="badge badge-danger"> {{ otazka_search.get_stav_display }} </span>
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endif %}
 <h2> Seznam týmů přihlášených do soutěže</h2>
 <div class="row mb-3" >
     <div id="accordion" style="overflow-y: auto; height: 500px;">

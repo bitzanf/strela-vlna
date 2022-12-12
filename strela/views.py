@@ -451,6 +451,7 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         # udělá z nich list a sečte je dohromady
         context["dostupne_celkem"] = sum(context["dostupne"].values_list('total',flat=True))
         context["prihlaseno"]=Tym_Soutez.objects.filter(soutez=self.object).count()
+        context["prihlaseno_skol"] = Tym_Soutez.objects.filter(soutez=self.object).values('tym__skola').distinct().aggregate(Count('tym__skola'))['tym__skola__count']
         context['form'] = self.get_form
         context['akt_rok'] = now().year
         context['tymy'] = Tym_Soutez.objects.filter(soutez=self.object).order_by('cislo')
@@ -479,6 +480,15 @@ class AdminSoutezDetail(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, 
         elif self.object.zahajena:
             context['spustitelna'] = False
             context['nespustitelna_proc'] = 'Nelze spustit soutěž, která již byla spuštěna.'
+
+        if 'cisloOtazky' in self.request.GET:
+            try:
+                cislo_otazky = int(self.request.GET['cisloOtazky'])
+                context['otazka_search'] = Soutez_Otazka.objects.get(cisloVSoutezi=cislo_otazky, soutez=self.object).otazka
+                context['otazka_search_num'] = cislo_otazky
+            except Exception:
+                messages.error(self.request, 'Nepodařilo se nalézt otázku s číslem ' + str(self.request.GET['cisloOtazky']))
+
         return context
 
     def post(self, request, *args, **kwargs):
@@ -595,10 +605,6 @@ class AdminSoutezSetMoney(LoginRequiredMixin, PermissionRequiredMixin, FormView)
     @transaction.atomic
     def form_valid(self, form):
         soutez = Soutez.objects.filter(pk=self.kwargs['pk']).first()
-        if Soutez.get_aktivni(admin=True) is None and soutez is not None:
-            soutez.zahajena = now()
-            soutez.aktivni = True
-            soutez.save()
 
         for key, val in form.cleaned_data.items():
             tym = Tym_Soutez.objects.get(tym__pk=int(key), soutez=soutez)

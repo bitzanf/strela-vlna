@@ -200,12 +200,11 @@ class AdminSoutezMoneyForm(forms.Form):
     def __init__(self, *args, **kwargs):
         soutez_pk = kwargs.pop('pk')
         super().__init__(*args, **kwargs)
-        #kwargs['pk'] = soutez_pk
+
         self.soutez = Soutez.objects.get(pk=soutez_pk)
         TvS = Tym_Soutez.objects.filter(soutez=self.soutez)
         for tym in TvS:
-            #self.fields[tym.tym.login] = forms.IntegerField(required=True, min_value=0, label='Získané peníze týmu \"' + tym.tym.jmeno + '\"', initial=tym.penize)
-            self.fields[str(tym.tym.pk)] = forms.IntegerField(required=True, min_value=0, label='Získané peníze týmu \"' + tym.tym.jmeno + '\"', initial=tym.penize)
+            self.fields[str(tym.tym.pk)] = forms.IntegerField(required=True, min_value=0, label='Získané peníze týmu \"' + tym.tym.jmeno + '\" (' + str(tym.cislo) + ')', initial=tym.penize)
 
     def clean(self):
         super().clean()
