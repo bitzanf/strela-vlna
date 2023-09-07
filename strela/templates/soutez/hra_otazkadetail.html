@@ -10,11 +10,12 @@
             $.ajax({
                 url: "{% url 'view_chat' %}",
                 success: function(data) {
-                    if (lastdata.localeCompare(data) != 0) {
-                        $("#chatlog").html(data);
+                    if (lastdata.localeCompare(data) !== 0) {
+                        let chatDiv = $("#chatlog");
+
+                        chatDiv.html(data);
                         lastdata = data;
 
-                        var chatDiv = $("#chatlog");
                         chatDiv.scrollTop = chatDiv.scrollHeight;
                     }
                 }
@@ -31,14 +32,14 @@
         function sendform() {
             //$('#sazka_penize').value = $('#sazka_penize_in').value;   //.val() by mohlo fungovat...
             document.getElementById('sazka_penize').value = document.getElementById('sazka_penize_in').value;
-            var form = $('#otazkaform');
+            let form = $('#otazkaform');
             form.append('<input type="hidden" name="b-podpora" value="">');
             form.submit();
             $('#modalVsadit').modal('hide');
         }
 
         function sendOnEnter(e) {
-            if (e.keyCode == 13 && !e.shiftKey) {
+            if (e.keyCode === 13 && !e.shiftKey) {
                 if ($('#chattext').val().trim().length > 1) {
                     $('#chatform').submit();
                 }

@@ -15,7 +15,7 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-STRELA_VERZE = '2.4.0'
+STRELA_VERZE = '2.4.1'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -127,9 +127,10 @@ USE_L10N = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
-#STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
 #VENV_PATH = os.path.dirname(BASE_DIR)
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+#STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_ROOT = ''
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
@@ -214,7 +215,8 @@ TINYMCE_DEFAULT_CONFIG = {
                "fullscreen  preview save | insertfile image media pageembed template link anchor codesample",
                "custom_undo_redo_levels": 10,
     "language": "cs",  # To force a specific language instead of the Django current language.
-    "selector": ".tinymce"
+    "selector": ".tinymce",
+    "promotion": "false"
 }
 TINYMCE_SPELLCHECKER = False
 TINYMCE_COMPRESSOR = False

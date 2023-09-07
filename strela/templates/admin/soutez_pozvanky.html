@@ -20,8 +20,9 @@ function toggleOkresy(checkbox) {
 
 function partialToggleParent(checkbox) {
     let partial = checkbox.checked;
+    let checkbox_element = $("#id_"+checkbox.name);
     if (partial) {
-        $("#id_"+checkbox.name).prop("indeterminate", true);
+        checkbox_element.prop("indeterminate", true);
         return;
     }
 
@@ -33,7 +34,7 @@ function partialToggleParent(checkbox) {
         }
     }
 
-    $("#id_"+checkbox.name).prop("indeterminate", partial);
+    checkbox_element.prop("indeterminate", partial);
 }
 </script>
 {% endblock %}

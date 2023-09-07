@@ -130,6 +130,12 @@ class Soutez(models.Model):
     @classmethod
     @transaction.atomic
     def get_aktivni(cls, admin:bool=False) -> Soutez | None:
+        """
+        administrátorský pohled má 5 minut navíc, aby stihli dodělat rozdělané požadavky na podporu / schválení
+        prodloužení existence soutěže se zajišťuje pouze přes uchování ID soutěže v Memcached po dobu 5 minut
+        zároveň také při požadavku na vyhledání aktivní soutěže, pokud již uplynul časový limit,
+        spustí automatické prodávání otázek do bazaru a označí soutěž za neaktivní
+        """
         try:
             soutez:Soutez = Soutez.objects.get(rok=now().year, aktivni=True)
             cache.set('act_soutez_admin', soutez.pk, timeout=300)
@@ -141,10 +147,10 @@ class Soutez(models.Model):
                     return None
                 return soutez if soutez.zahajena is not None else None
             return None
-        if now() < (soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)):
+        if now() < (soutez.zahajena + datetime.timedelta(minutes=soutez.delkam)):
             return soutez
         else:
-            saa = cache.get('soutez_sellall')
+            saa = cache.get('soutez_sellall')  # příznak, že už jiné vlákno otázky prodává
             if not saa:
                 cache.set('soutez_sellall', True, timeout=600)
                 Tym_Soutez_Otazka.sellall(soutez)
@@ -239,6 +245,7 @@ class Soutez_Otazka(models.Model):
     def __str__(self) -> str:
         return f'{self.otazka.typ}-{self.cisloVSoutezi} [{self.otazka.id}] ({self.soutez.rok})'
 
+#TODO: zdokumentovat
 class Tym_Soutez_Otazka(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True, db_index=True)
     skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, null=True, db_index=True) # porusuje zasady spravne databaze, ale urychluje vyhledavani

@@ -61,6 +61,10 @@ CENIK = {
 
 TYM_DEFAULT_MONEY = 40
 
+# "Nomenclature of territorial units for statistics"
+# jednotný hiearchický evropský systém na určení oblasti ve státě
+# popis formátu pro ČR:
+#   CZ0 <REGION> <KRAJ> <OKRES>
 CZ_NUTS_NAMES = {
     'CZ0100': 'Hlavní město Praha',
     'CZ0101': 'Praha 1',
