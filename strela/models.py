@@ -32,7 +32,7 @@ class Skola(models.Model):
 
     email1:str = models.EmailField(max_length=256)
     email2:str = models.EmailField(max_length=256, blank=True)
-    
+
     region:str = models.CharField(max_length=1)
     kraj:str = models.CharField(max_length=1)
     okres:str = models.CharField(max_length=1)
@@ -125,8 +125,8 @@ class Soutez(models.Model):
 
     def save(self, *args, **kwargs):
         self.rok = self.regdo.strftime("%Y")
-        super(Soutez, self).save(*args, **kwargs)    
-    
+        super(Soutez, self).save(*args, **kwargs)
+
     @classmethod
     @transaction.atomic
     def get_aktivni(cls, admin:bool=False) -> Soutez | None:
@@ -154,7 +154,7 @@ class Soutez(models.Model):
             if not saa:
                 cache.set('soutez_sellall', True, timeout=600)
                 Tym_Soutez_Otazka.sellall(soutez)
-                soutez.aktivni = False 
+                soutez.aktivni = False
                 logger.info(f"Soutěž {soutez} byla ukončena.")
                 soutez.save()
                 cache.set('soutez_sellall', False, timeout=600)
@@ -181,7 +181,7 @@ class Soutez(models.Model):
     class Meta:
         verbose_name="Soutěž"
         verbose_name_plural="Soutěže"
-    
+
     def pretty_name(self, add_rok=False) -> str:
         """
         `Pražská střela (Matematika) [Prezenční]`
@@ -192,7 +192,7 @@ class Soutez(models.Model):
             return self.nazev + ' (' + self.zamereni + ') [' + self.get_prezencni_display() + '] (' + str(self.rok) + ')'
         else:
             return self.nazev + ' (' + self.zamereni + ') [' + self.get_prezencni_display() + ']'
-    
+
 
 class Tym_Soutez(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, related_name="tymy", db_index=True)
@@ -245,7 +245,6 @@ class Soutez_Otazka(models.Model):
     def __str__(self) -> str:
         return f'{self.otazka.typ}-{self.cisloVSoutezi} [{self.otazka.id}] ({self.soutez.rok})'
 
-#TODO: zdokumentovat
 class Tym_Soutez_Otazka(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True, db_index=True)
     skola:Skola = models.ForeignKey(Skola, on_delete=models.CASCADE, null=True, db_index=True) # porusuje zasady spravne databaze, ale urychluje vyhledavani
@@ -266,19 +265,32 @@ class Tym_Soutez_Otazka(models.Model):
     @classmethod
     @transaction.atomic
     def buy(cls, tym:Tym, soutez:Soutez, obtiznost:str) -> Tym_Soutez_Otazka:
+        """
+        zakoupí jednu otázku danému týmu s vyžádanou obtížností
+        pokud je obtížnost 'A' (nejlehčí), zakoupí se v případě nedostatku z bazaru
+
+        umožňuje zakoupit pouze otázky, které se ještě nevyskytly u žádného týmu ze stejné školy
+
+        :param tym: tým, který si otázku kupuje
+        :param soutez: soutěž, ve které se otázka kupuje
+        :param obtiznost: jednoznakový string s obtížností ('A', 'B', apod.)
+        :returns: nově zakoupená otázka
+        """
         tym_soutez:Tym_Soutez = Tym_Soutez.objects.get(tym=tym, soutez=soutez)
+        otazky_skoly = LogTable.objects.filter(tym__skola=tym.skola, soutez=soutez).values_list('otazka', flat=True).distinct()
         konec = soutez.zahajena + datetime.timedelta(minutes=soutez.delkam)
 
         if konec - now() < datetime.timedelta(minutes=15):
             raise Exception('Obchod se na posledních 15 minut soutěže zavírá')
-        
+
+        # pokud má tým na otázku dostatek peněz
         if tym_soutez.penize >= CENIK[obtiznost][0]:
             # vsechny otazky v dane soutezi
             otazky = Soutez_Otazka.objects.filter(otazka__obtiznost=obtiznost, soutez=soutez)
             # vyhodit vsechny otazky, ktere uz si zakoupila dana skola
             otazky = otazky.exclude(
-                id__in=Tym_Soutez_Otazka.objects.filter(skola=tym.skola).values_list('otazka', flat=True)
-            ).order_by('?')[:1]
+                otazka__in=otazky_skoly
+            ).order_by('?')[:1]  # otázky se seřadí náhodně a poté se jedna z nich vybere
 
             if len(otazky) == 0:
                 if obtiznost == 'A':
@@ -306,23 +318,46 @@ class Tym_Soutez_Otazka(models.Model):
     @classmethod
     @transaction.atomic
     def buy_bazar(cls, tym:Tym, soutez:Soutez, obtiznost:str) -> Tym_Soutez_Otazka:
+        """
+        zakoupí jednu otázku danému týmu z bazaru s vyžádanou obtížností
+
+        umožňuje zakoupit pouze otázky, které se ještě nevyskytly u žádného týmu ze stejné školy a zároveň jsou
+        momentálně v bazaru; výjimkou jsou pouze otázky, které prodal jiný tým ze stejné školy
+
+        :param tym: tým, který si otázku kupuje
+        :param soutez: soutěž, ve které se otázka kupuje
+        :param obtiznost: jednoznakový string s obtížností ('A', 'B', apod.)
+        :returns: nově zakoupená otázka
+        """
         tym_soutez:Tym_Soutez = Tym_Soutez.objects.get(tym=tym, soutez=soutez)
 
+        # pokud má tým na otázku dostatek peněz
         if tym_soutez.penize >= CENIK[obtiznost][2]:
-            otazky = Tym_Soutez_Otazka.objects.filter(stav=5, otazka__soutez=soutez, otazka__otazka__obtiznost=obtiznost)
-            otazky = otazky.exclude(
-                Q(id__in=Tym_Soutez_Otazka.objects.filter((~Q(stav=5)) & Q(skola=tym.skola)).values_list('id', flat=True))
-              | Q(tym=tym)  # nechceme, aby si tym koupil z bazaru vlastni otazku
-            ).order_by('?')[:1]
+            moje_otazky = LogTable.objects.filter(tym=tym, soutez=soutez).values_list('otazka', flat=True).distinct()
+            # všechny bazarové otázky v dané soutěži s danou obtížností
+            # vyhodíme všechny, které tým jakkoliv viděl
+            # a poté vyhodíme všechny, ke kterým se dostal kdokoliv ze stejné školy (vyjma případu, kdy otázku prodali)
+            otazky = (Tym_Soutez_Otazka.objects.filter(
+                        stav=5,
+                        otazka__soutez=soutez,
+                        otazka__otazka__obtiznost=obtiznost
+                    ).exclude(otazka__otazka__in=moje_otazky)
+                     .exclude(
+                        id__in=Tym_Soutez_Otazka.objects.filter(
+                            otazka__soutez=soutez,
+                            skola=tym.skola
+                        ).exclude(stav=5)
+                    ))
+            otazky = otazky.order_by('?')[:1]
 
             if len(otazky) == 0:
-                logger.error("Tým {} se pokusil koupit otázku s obtížností {} Z BAZARU, které došly.".format(tym, obtiznost))
-                raise Exception("došly otázky s obtížností {} v bazaru :/".format(obtiznost))
+                logger.error(f"Tým {tym} se pokusil koupit otázku s obtížností {obtiznost} Z BAZARU, které došly.")
+                raise Exception(f"došly otázky s obtížností {obtiznost} v bazaru :/")
 
             otazka:Tym_Soutez_Otazka = otazky[0]
             otazka.stav = 6
             tym_soutez.penize -= CENIK[obtiznost][2]
-            otazka.tym=tym
+            otazka.tym = tym
             LogTable.objects.create(tym=tym, otazka=otazka.otazka.otazka, soutez=soutez, staryStav=5, novyStav=6)
             logger.info("Tým {} zakoupil otázku {} s obtížností {} za {} DC.".format(tym, otazka.otazka, obtiznost, CENIK[obtiznost][0]))
             otazka.save()
@@ -336,9 +371,18 @@ class Tym_Soutez_Otazka(models.Model):
 
     # pro ucely hromadneho prodavani v 1 transakci
     def sell_unsafe(self):
-        if self.bazar: return
-        LogTable.objects.create(tym=self.tym, otazka=self.otazka.otazka, soutez=self.otazka.soutez, staryStav=self.stav, novyStav=5)
-        
+        if self.bazar:
+            logger.info(f"Tým {self.tym} se pokouší prodat bazarovou otázku {self.otazka}!")
+            return
+
+        LogTable.objects.create(
+            tym=self.tym,
+            otazka=self.otazka.otazka,
+            soutez=self.otazka.soutez,
+            staryStav=self.stav,
+            novyStav=5
+        )
+
         team:Tym_Soutez = Tym_Soutez.objects.get(tym=self.tym, soutez=self.otazka.soutez)
         if self.otazka.otazka.obtiznost != "A":
             self.bazar = True
@@ -346,6 +390,7 @@ class Tym_Soutez_Otazka(models.Model):
         self.odpoved = ""
         team.penize += CENIK[self.otazka.otazka.obtiznost][2]
         logger.info("Tým {} prodal otázku {} do bazaru za {} DC.".format(team.tym, self.otazka, CENIK[self.otazka.otazka.obtiznost][2]))
+        self.tym = None
         self.save()
         team.save()
 
@@ -371,8 +416,8 @@ class Tym_Soutez_Otazka(models.Model):
         konverzace.sazka = sazka
         konverzace.save()
         return konverzace
-    
-    
+
+
 
 class LogTable(models.Model):
     tym:Tym = models.ForeignKey(Tym, on_delete=models.CASCADE, null=True, db_index=True)
@@ -392,7 +437,7 @@ class LogTable(models.Model):
 
     @property
     def cisloVSoutezi(self) -> int:
-        cache_key = "cvs_{}-{}".format(self.otazka_id,self.soutez_id) 
+        cache_key = "cvs_{}-{}".format(self.otazka_id,self.soutez_id)
         cached = cache.get(cache_key)
         if not cached:
             try:
@@ -407,7 +452,7 @@ class LogTable(models.Model):
 
     @property
     def typOtazky(self) -> str:
-        cache_key = "to_{}-{}".format(self.otazka_id,self.soutez_id) 
+        cache_key = "to_{}-{}".format(self.otazka_id,self.soutez_id)
         cached = cache.get(cache_key)
         if not cached:
             try:
@@ -418,7 +463,7 @@ class LogTable(models.Model):
                 logger.error("Chyba {} při získávání atributu typOtazky".format(e))
                 return 0
         else:
-            return cached  
+            return cached
 
 
 class EmailInfo(models.Model):

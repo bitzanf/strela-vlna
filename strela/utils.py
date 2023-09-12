@@ -16,6 +16,7 @@ def eval_registration(self):
     |
     | ``soutez`` [Queryset(Soutez)] - seznam všech letošních registracích
     | ``is_aktivni_soutez`` [bool] - probíhá zrovna alespoň jedna soutěž?
+    | ``registrace`` [bool] - je otevřená nějaká registrace?
 
     :returns: kontext pro renderování šablony
     """
@@ -199,9 +200,11 @@ def vokalizace_z_ze(skola: Skola, kratky_nazev:bool = True) -> str:
 
 def auto_kontrola_odpovedi(odpoved:str, reseni:str, odchylka:float=0.05) -> bool:
     """
-    automaticky kontroluje odpovědi na **otázky**
+    automaticky kontroluje odpovědi na otázky
+
     odpověď týmu i řešení musí obsahovat POUZE číslice a znaky ``+-*/,.()`` - pak se pomocí eval()
     vyhodotí jejich číselná hodnota a porovná se, obsahuje-li i něco navíc, porovnají se odpovědi jako stringy
+
     číselné odpovědi mají určitou toleranci (defaultně 5%),
     aby se např 1/3 a 0.33 vyhodnotily jako stejné hodnoty
 
@@ -338,8 +341,7 @@ class BulkMailSender():
                     cache.set('mail_q_last_succesful', read_end)
                     cache.delete(f'mail_q_mail_{read_end}')
                 except Exception as e:
-                    # TODO: logovat i adresu a index v mail_q_ seznamu
-                    logger.error(f'Chyba při rezesílání pozvánek: {e}')
+                    logger.error(f'Chyba při rezesílání pozvánek: {e} (idx {read_end}, to: {address})')
                     error_count += 1
                     if error_count > 8:
                         logger.error(f'Príliš mnoho chyb při odesílání mailů! (odesláno {n_sent} mailů)')

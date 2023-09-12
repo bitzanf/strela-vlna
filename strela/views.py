@@ -39,32 +39,58 @@ class AdministraceIndex(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
     permission_required = 'strela.adminsouteze'
     login_url = reverse_lazy("admin_login")
 
-# TODO: zdokumentovat
     def cache_otazky(self, soutez:Soutez):
+        """
+        spočítá statistiky otázek pro jednotlivé školy, výsledek uloží do cache pod klíčem ``admin_soutez_otazky``,
+        zároveň je také vrátí
+
+        z důvodu vyšší náročnosti se v produkčním systému hodnoty přepočítávají jednou za minutu
+
+        formát statistik:
+
+            (
+                "krátký název školy"
+
+                "plný název školy"
+
+                počet týmů školy
+
+                (
+                    list[int] počet otázek v jednotlivých stavech z constants.FLAGSOUTEZSTATE
+
+                    list[dict[string, int]] podrobný počet otázek v jednotlivých stavech rozdělený podle obtížností
+                )
+            )
+
+        :returns: list spočítaných statistik pro každou školu
+        """
         skoly = Tym_Soutez.objects.filter(soutez=soutez).values_list('tym__skola', flat=True).distinct()
         otazky = Soutez_Otazka.objects.filter(soutez=soutez)
 
         stavy = []
         for skola in skoly:
             skola_obj = Skola.objects.get(id=skola)
-            stavy_obtiznosti = [{}, {}, {}, {}, {}, {}, {}, {}]  # [{} * 8] ??
-            otazky_skoly = Tym_Soutez_Otazka.objects.filter(skola=skola, otazka__in=otazky)
-            dostupne = otazky.exclude(
-                id__in=otazky_skoly.values_list('otazka', flat=True)
-            )
+            stavy_obtiznosti = [dict() for i in range(8)]  # obsahuje počty otázek (rozdělených podle obtíźnosti) pro každý stav z constants.FLAGSOUTEZSTATE
+            otazky_skoly = LogTable.objects.filter(soutez=soutez, tym__skola=skola).values_list('otazka', flat=True).distinct()
+            otazky_skoly_obj = Tym_Soutez_Otazka.objects.filter(otazka__soutez=soutez, otazka__otazka__in=otazky_skoly)
+            dostupne = otazky.exclude(otazka__in=otazky_skoly)
 
-            stavy_list = [0, 0, 0, 0, 0, 0, 0, 0]
-
+            stavy_list = [0 for i in range(8)]  # celkový počet otázek v daném stavu bez ohledu na obtížnost
             stavy_list[0] = dostupne.count()
-            for o in dostupne.values('otazka__obtiznost').annotate(count=Count('otazka__obtiznost')):
-                stavy_obtiznosti[0].update({o['otazka__obtiznost']:o['count']})
 
-            for o in otazky_skoly:
-                if not o.otazka.otazka.obtiznost in stavy_obtiznosti[o.stav].keys():
+            # pro spočítá počet dostupných otázek v každé obtížnosti
+            # výsledek uloží do stavy_obtiznosti[0] jako dict(obtiznost: pocet)
+            for o in dostupne.values('otazka__obtiznost').annotate(count=Count('otazka__obtiznost')):
+                stavy_obtiznosti[0].update({o['otazka__obtiznost']: o['count']})
+
+            # spočítá počet zakoupených otázek danou školou pro každou obtížnost
+            for o in otazky_skoly_obj:
+                if o.otazka.otazka.obtiznost not in stavy_obtiznosti[o.stav].keys():
                     stavy_obtiznosti[o.stav].update({o.otazka.otazka.obtiznost:1})
                 else:
                     stavy_obtiznosti[o.stav][o.otazka.otazka.obtiznost] += 1
 
+            # posčítá stavy všech obtížností do celkového počtu v daném stavu
             for i in range(1, len(stavy_list)):
                 stavy_list[i] = sum(stavy_obtiznosti[i].values())
             
@@ -100,13 +126,13 @@ class AdministraceIndex(LoginRequiredMixin, PermissionRequiredMixin, TemplateVie
         ctx['n_tymu'] = Tym_Soutez.objects.filter(soutez=soutez).count()
 
         stavy = cache.get('admin_soutez_otazky')
-        if not stavy: stavy = self.cache_otazky(soutez)
+        if not stavy or getattr(settings, 'DEBUG', False): stavy = self.cache_otazky(soutez)
         ctx['n_otazek_skoly'] = stavy
 
         ctx['aktivni_soutez'] = soutez
         if soutez is not None: ctx['soutez_valid'] = True if soutez.prezencni == 'O' else False
 
-        if soutez != None:
+        if soutez is not None:
             konec = soutez.zahajena + datetime.timedelta(minutes = soutez.delkam)
             if konec - now() < datetime.timedelta(minutes=5):
                 ctx["color"] = "danger"
@@ -930,29 +956,41 @@ class HraIndexJsAPI(TemplateView):
                 context["soutez_valid"] = True if context["aktivni_soutez"].prezencni == 'O' else False
             context["tym"] = Tym_Soutez.objects.get(tym=self.request.user, soutez=context["aktivni_soutez"])
             # všechny otázky daného týmu v aktuální soutěži, které nejsou ve stavu "Chybná"
-            context["otazky"] = Tym_Soutez_Otazka.objects.filter(tym=self.request.user, otazka__soutez=context["aktivni_soutez"]).exclude(otazka__otazka__id__in=Otazka.objects.filter(stav=2).values_list('id', flat=True))
+            context["otazky"] = Tym_Soutez_Otazka.objects.filter(
+                tym=self.request.user,
+                otazka__soutez=context["aktivni_soutez"]
+            ).exclude(
+                otazka__otazka__id__in=Otazka.objects.filter(stav=2).values_list('id', flat=True)
+            )
             context["o_vyreseno"] = context["otazky"].filter(stav=3).count()  # vyřešená
             context["o_zakoupene"] = context["otazky"].filter(Q(stav=1)|Q(stav=6)).count()  # zakoupená nebo z bazaru
             context["o_problemy"] = context["otazky"].filter(Q(stav=4)|Q(stav=7)).count()  # podpora nebo chybná odpověď
 
-            # všechny otázky, které jsou v dané soutěži a ještě je nevlastní žádný tým z mé školy
-            n_nove_qs = Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"]).exclude(
-                id__in=Tym_Soutez_Otazka.objects.filter(skola=context['tym'].tym.skola).values_list('otazka', flat=True)
-            ).values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost'))
+            otazky_skoly = (LogTable.objects.filter(tym__skola=self.request.user.skola, soutez=context["aktivni_soutez"])
+                            .values_list('otazka', flat=True).distinct())
 
-            # všechny otázky v aktivní soutěži, které jsou v bazaru a neměl je nikdo z mé školy
-            # TODO: tohle je totální nesmysl - chceme otázky v bazaru, které můj tým ještě neměl a které ZROVNA NEŘEŠÍ žádný z týmů z mé školy
-            n_bazar_qs = Tym_Soutez_Otazka.objects.filter(
-                Q(otazka__soutez=context["aktivni_soutez"])
-                    & (
-                        (
-                            Q(stav=5)
-                         & ~Q(skola=context['tym'].tym.skola)
-                        )
-                      | Q(id__in=Tym_Soutez_Otazka.objects.filter(skola=context['tym'].tym.skola, stav=5).values_list('id', flat=True))
-                    )
-                    & ~Q(tym=self.request.user)
-            ).values('otazka__otazka__obtiznost').annotate(total=Count('otazka__otazka__obtiznost'))
+            # všechny otázky, které jsou v dané soutěži a ještě je nevlastní žádný tým z mé školy
+            # vyhodit vsechny otazky, ktere uz si zakoupila dana skola
+            n_nove_qs = (Soutez_Otazka.objects.filter(soutez=context["aktivni_soutez"])
+                         .exclude(otazka__in=otazky_skoly)
+                         .values('otazka__obtiznost').annotate(total=Count('otazka__obtiznost')))
+
+            moje_otazky = (LogTable.objects.filter(tym=self.request.user, soutez=context["aktivni_soutez"])
+                           .values_list('otazka', flat=True).distinct())
+
+            # všechny bazarové otázky v dané soutěži s danou obtížností
+            # vyhodíme všechny, které tým jakkoliv viděl
+            # a poté vyhodíme všechny, ke kterým se dostal kdokoliv ze stejné školy (vyjma případu, kdy otázku prodali)
+            n_bazar_qs = (Tym_Soutez_Otazka.objects.filter(
+                    stav=5,
+                    otazka__soutez=context["aktivni_soutez"],
+                ).exclude(otazka__otazka__in=moje_otazky)
+                .exclude(
+                    id__in=Tym_Soutez_Otazka.objects.filter(
+                        otazka__soutez=context["aktivni_soutez"],
+                        skola=self.request.user.skola
+                    ).exclude(stav=5)
+                ).values('otazka__otazka__obtiznost').annotate(total=Count('otazka__otazka__obtiznost')))
 
             # hezký výpis počtu dostupných otázek v jednotlivých obtížnostích
             n_nove:dict[str, int] = { 'A' : 0 }
@@ -974,11 +1012,11 @@ class HraIndexJsAPI(TemplateView):
         except Tym_Soutez.DoesNotExist:
             logger.error("Tým {} se pokouší soutěžit v {} kam ale není přihlášen.".format(self.request.user, context["aktivni_soutez"]))
         except Exception as e:
-            context["api_db_err"] = f"{e}" #nechutny ale nevim jak jinak a tohle funguje
+            context["api_db_err"] = f"{e}"  # nechutny ale nevim jak jinak a tohle funguje
             logger.error("Došlo k chybě {}. Tým {} Soutěž {}".format(e, self.request.user, context["aktivni_soutez"]))
 
         # zavírání obchodu před koncem soutěže
-        if context["aktivni_soutez"] != None:
+        if context["aktivni_soutez"] is not None:
             konec = context["aktivni_soutez"].zahajena + datetime.timedelta(minutes = context["aktivni_soutez"].delkam)
             if konec - now() < datetime.timedelta(minutes=5):
                 context["color"] = "danger"
@@ -1023,14 +1061,8 @@ class HraIndex(LoginRequiredMixin, TemplateView):
             context['souteze_tymu'] = [s.pretty_name(True) for s in Soutez.objects.filter(
                 id__in=Tym_Soutez.objects.filter(tym=self.request.user).values_list('soutez', flat=True)
             )]
-            # TODO: co třeba [getattr(self.request.user, f'soutezici{i}') for i in range (1, 6)] ?? ---- miluju python xd
-            context['soutezici'] = [
-                self.request.user.soutezici1,
-                self.request.user.soutezici2,
-                self.request.user.soutezici3,
-                self.request.user.soutezici4,
-                self.request.user.soutezici5
-            ] if context["is_user_tym"] else []
+            context['soutezici'] = [getattr(self.request.user, f'soutezici{i}') for i in range(1, 6)] \
+                                        if context["is_user_tym"] else []
             context['skola'] = self.request.user.skola if context["is_user_tym"] else None
             context['email'] = self.request.user.email if context["is_user_tym"] else None
         return context
@@ -1045,7 +1077,6 @@ class HraUdalostitymu(LoginRequiredMixin, TemplateView):
         context['is_user_tym'] = isinstance(self.request.user, Tym)
         if not context["is_user_tym"]: return context
 
-        # TODO: context_add_soutez() ??
         aktivni_soutez = Soutez.get_aktivni()
 
         if aktivni_soutez:
@@ -1612,6 +1643,7 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
         rx = re.compile(r'kraj-CZ0.{3}')
         send_btn = 'b-send' in form.data
         skoly_mails = set()
+        vip_mails = set()
 
         cache.set('mail_q_subject', form.data['pleb_subject'])
         cache.set('mail_q_subject_vip', form.data['vip_subject'])
@@ -1619,6 +1651,10 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
         def update_mails(s):
             skoly_mails.update(s.values_list('email1', flat=True))
             skoly_mails.update(s.values_list('email2', flat=True))
+
+        def update_vip_mails(s):
+            vip_mails.update(s.values_list('email1', flat=True))
+            vip_mails.update(s.values_list('email2', flat=True))
 
         # některé školy nemají vyplněný druhý mail, což by při rozesílání působilo problémy
         # proto se musí prázdné hodnoty příjemců odstranit
@@ -1628,12 +1664,12 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
             try: s.remove('')
             except: pass
 
-        vip_skoly_all = Tym_Soutez.objects.filter(
+        vip_tymy_all = Tym_Soutez.objects.filter(
             soutez__in=Soutez.objects.filter(
                 rok__in=(now().year, now().year-1)
             ).exclude(id=soutez.id)
         ).distinct()
-        vip_skoly_all_ids = vip_skoly_all.values_list('tym__skola__id', flat=True)
+        vip_skoly_all_ids = vip_tymy_all.values_list('tym__skola__id', flat=True)
 
         # vsechny skoly ze vsech okresu vybranych ve formulari
         # form.data obsahuej seznam všech zaškrtlých okresů
@@ -1661,9 +1697,10 @@ class AdminPozvanky(LoginRequiredMixin, PermissionRequiredMixin, FormMixin, Temp
 
         # vsechny skoly, ktere jsou ve vybranych regionech a jejichz tymy se
         # v poslednich 2 letech ucastnily nejakych soutezi
-        # TODO: predelat aby se posilaly pozvanky i VIP skolam primo
-        vip_skoly = vip_skoly_all.filter(tym__skola__id__in=allowed_ids).distinct()
-        vip_mails = set(vip_skoly.values_list('tym__email', flat=True))
+        vip_skoly = vip_skoly_all_ids.filter(id__in=allowed_ids).distinct()
+        vip_tymy = vip_tymy_all.filter(tym__skola__id__in=vip_skoly).distinct()
+        vip_mails = set(vip_tymy.values_list('tym__email', flat=True))
+        update_vip_mails(Skola.objects.filter(id__in=vip_skoly))
         clean_set(vip_mails)
 
         skoly_mails = skoly_mails.difference(vip_mails)
